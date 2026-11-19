@@ -299,7 +299,7 @@ export class CustomerManager {
       }
     }
     for (const c of [...this.list]) {
-      c.update(dt);
+      try { c.update(dt); } catch (e) { console.error('customer error', e); try { this.remove(c); } catch (e2) { /* noop */ } continue; }
       // fell into the void / out of range safety
       if (!c.inCar && (c.pos.y < -5 || Math.abs(c.pos.x) > 400)) this.remove(c);
     }
@@ -341,16 +341,18 @@ export class CustomerManager {
     return null;
   }
 
-  carModelFor(cust) {
+  carModelFor(cust, opts = {}) {
     const type = cust.kind === 'biker' && chance(0.3) ? 'muscle' : this.game.traffic.randomType();
-    return this.game.traffic.spawnModel(type);
+    return this.game.traffic.spawnModel(type, opts);
   }
 
   // ------------------------------------------------------------- fuel customer
   spawnFuel(slot, holdLane = null) {
     const g = this.game, T = g.traffic;
     const c = new Customer(this, {});
-    const model = this.carModelFor(c);
+    // park with the fuel cap facing the pump island (S lane: island on the right / +Z)
+    const lane = slot ? slot.lane : holdLane;
+    const model = this.carModelFor(c, { fuelSide: lane === 'S' ? 1 : -1 });
     const car = T.addCar(model);
     c.sitInCar(car);
     this.list.push(c);
@@ -760,7 +762,7 @@ export class CustomerManager {
           g.economy.earn(price, 'Car wash', car.pos.clone().setY(2));
           g.economy.addXP(8);
           g.economy.stats.washes++;
-          car.paint.clearcoatRoughness = 0.01;
+          if (car.m.paint) car.m.paint.clearcoatRoughness = 0.01;
           car.onArrive = () => this.carLeft(c);
           this.servedToday++;
         }

@@ -77,7 +77,7 @@ export class Register {
       m.userData.reg = { type: 'denom', value: d };
       drawer.add(m); this.denomMeshes.push(m); this.targets.push(m);
       const lbl = new THREE.Mesh(new THREE.PlaneGeometry(0.08, 0.035), new THREE.MeshBasicMaterial({ map: labelTex(d >= 1 ? '$' + d : Math.round(d * 100) + '¢'), transparent: true }));
-      lbl.rotation.x = -Math.PI / 2; lbl.position.set(m.position.x + (isBill ? -0.0 : 0), 0.072, m.position.z - 0.0); lbl.position.x += isBill ? -0.0 : 0; lbl.position.y = isBill ? 0.07 : 0.07;
+      lbl.rotation.set(-Math.PI / 2, 0, -Math.PI / 2); lbl.position.set(m.position.x + (isBill ? -0.0 : 0), 0.072, m.position.z - 0.0); lbl.position.x += isBill ? -0.0 : 0; lbl.position.y = isBill ? 0.07 : 0.07;
       lbl.position.x = m.position.x + (isBill ? 0 : 0); lbl.position.z = m.position.z; lbl.position.y = 0.068;
       lbl.renderOrder = 3; lbl.position.x += isBill ? 0 : 0;
       drawer.add(lbl);
@@ -93,19 +93,19 @@ export class Register {
       const row = Math.floor(i / 3), col = i % 3;
       const key = new THREE.Mesh(boxGeo(0.06, 0.02, 0.06, 0), new THREE.MeshStandardMaterial({ map: labelTex(k, '#e8e8e8', '#111'), roughness: 0.5 }));
       key.position.set(0.09 - row * 0.065 + 0.0, 0.018, -0.08 + col * 0.075);
-      key.rotation.y = Math.PI / 2;
+      key.rotation.y = -Math.PI / 2;
       key.userData.reg = { type: 'key', key: k };
       pad.add(key); this.targets.push(key);
     });
-    const ok = new THREE.Mesh(boxGeo(0.06, 0.02, 0.21, 0), new THREE.MeshStandardMaterial({ map: labelTex('OK', '#2fbf5a', '#fff'), roughness: 0.5 }));
-    ok.position.set(-0.17, 0.018, 0); ok.rotation.y = Math.PI / 2; ok.userData.reg = { type: 'ok' }; pad.add(ok); this.targets.push(ok);
+    const ok = new THREE.Mesh(boxGeo(0.21, 0.02, 0.06, 0), new THREE.MeshStandardMaterial({ map: labelTex('OK', '#2fbf5a', '#fff'), roughness: 0.5 }));
+    ok.position.set(-0.17, 0.018, 0); ok.rotation.y = -Math.PI / 2; ok.userData.reg = { type: 'ok' }; pad.add(ok); this.targets.push(ok);
     pad.position.set(X - 0.2, TOP + 0.01, 4.82);
     grp.add(pad); this.pad = pad;
     // "given change" counter and clear button
     const giveBtn = new THREE.Mesh(boxGeo(0.12, 0.03, 0.12, 0), new THREE.MeshStandardMaterial({ map: labelTex('GIVE', '#ffb52e', '#111'), roughness: 0.5 }));
-    giveBtn.position.set(X - 0.12, TOP + 0.015, 3.85); giveBtn.rotation.y = Math.PI / 2; giveBtn.userData.reg = { type: 'give' }; grp.add(giveBtn); this.targets.push(giveBtn);
+    giveBtn.position.set(X - 0.12, TOP + 0.015, 3.85); giveBtn.rotation.y = -Math.PI / 2; giveBtn.userData.reg = { type: 'give' }; grp.add(giveBtn); this.targets.push(giveBtn);
     const clr = new THREE.Mesh(boxGeo(0.12, 0.03, 0.12, 0), new THREE.MeshStandardMaterial({ map: labelTex('UNDO', '#ff6b6b', '#111'), roughness: 0.5 }));
-    clr.position.set(X - 0.12, TOP + 0.015, 3.68); clr.rotation.y = Math.PI / 2; clr.userData.reg = { type: 'clear' }; grp.add(clr); this.targets.push(clr);
+    clr.position.set(X - 0.12, TOP + 0.015, 3.68); clr.rotation.y = -Math.PI / 2; clr.userData.reg = { type: 'clear' }; grp.add(clr); this.targets.push(clr);
     this.targets.push(scr);
     // interaction hook to enter register mode
     for (const m of [bez, body, scr]) { m.userData.interact = { system: this, kind: 'register' }; }
@@ -184,7 +184,7 @@ export class Register {
   enter() {
     const g = this.game;
     this.active = true;
-    g.player.enterFixedView(SHOP.playerRegSpot.clone().setY(FY + 1.63), new THREE.Vector3(SHOP.counter.x + 0.15, TOP - 0.05, 4.05));
+    g.player.enterFixedView(new THREE.Vector3(SHOP.counter.x - 1.45, FY + 1.63, 4.1), new THREE.Vector3(SHOP.counter.x - 0.2, TOP - 0.2, 4.08));
     g.input.cursorMode = true;
     g.input.exitLock();
     g.ui.registerMode(true);
@@ -197,7 +197,7 @@ export class Register {
     g.player.exitFixedView();
     g.input.cursorMode = false;
     g.ui.registerMode(false);
-    g.input.requestLock();
+    g.input.requestLock(); g.lockHint && g.lockHint();
   }
 
   // ------------------------------------------------------------ click handling
@@ -359,7 +359,7 @@ export class Register {
     }
     // drawer slide
     this.drawerOpen = THREE.MathUtils.lerp(this.drawerOpen, this.drawerTarget || 0, 1 - Math.exp(-10 * dt));
-    this.drawer.position.x = this.drawerClosedX - this.drawerOpen * 0.32;
+    this.drawer.position.x = this.drawerClosedX - this.drawerOpen * 0.24;
     // hover highlight in register mode
     if (this.active) {
       const hit = g.player.pointerPick(this.targets);

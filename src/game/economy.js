@@ -19,7 +19,7 @@ export class Economy {
   }
 
   freshStats() {
-    return { revenue: 0, fuelRevenue: 0, shopRevenue: 0, tips: 0, expenses: 0, fuelCustomers: 0, registerCustomers: 0, itemsSold: 0, litres: 0, lost: 0, funny: 0, perfect: 0, wrongFuel: 0, thievesCaught: 0, stolen: 0, washes: 0, repStart: this.reputation ?? 2.4 };
+    return { revenue: 0, fuelRevenue: 0, shopRevenue: 0, tips: 0, expenses: 0, spendUpgrades: 0, spendStock: 0, spendOther: 0, fuelCustomers: 0, registerCustomers: 0, itemsSold: 0, litres: 0, lost: 0, funny: 0, perfect: 0, wrongFuel: 0, thievesCaught: 0, stolen: 0, washes: 0, repStart: this.reputation ?? 2.4 };
   }
 
   earn(amount, reason, pos = null, meta = {}) {
@@ -47,6 +47,9 @@ export class Economy {
     }
     this.money -= amount;
     this.stats.expenses += amount;
+    if (reason === 'Upgrade') this.stats.spendUpgrades += amount;
+    else if (reason === 'Stock order' || reason === 'Fuel order') this.stats.spendStock += amount;
+    else if (reason !== 'Wages' && reason !== 'Bills') this.stats.spendOther += amount;
     this.game.ui.updateMoney(true, true);
     return true;
   }

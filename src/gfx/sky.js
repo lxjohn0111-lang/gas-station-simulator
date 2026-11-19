@@ -202,7 +202,7 @@ export class DayNight {
     this.moon.material.opacity = this.nightFactor;
     this.moon.visible = this.nightFactor > 0.01;
     this.glare.position.copy(playerPos).addScaledVector(s, 1200);
-    this.glare.material.opacity = smoothstep(-0.05, 0.1, elev) * 0.55 * (1 - w.clouds * 0.6) * (1 - w.dust * 0.6);
+    this.glare.material.opacity = smoothstep(-0.05, 0.1, elev) * 0.28 * (1 - w.clouds * 0.6) * (1 - w.dust * 0.6);
     this.glare.material.color.copy(sunCol);
     this.glare.visible = this.glare.material.opacity > 0.01;
     this.sky.position.copy(playerPos);

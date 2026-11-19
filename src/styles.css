@@ -255,3 +255,5 @@ button { font-family: var(--font); cursor: pointer; }
   .toast { font-size: 12px; }
   .tank-levels { display: none; }
 }
+
+.credits { font-size: 10px; color: #6f6a62; text-align: center; line-height: 1.5; }

@@ -70,6 +70,11 @@ export class Game {
     this.timers = [];
   }
 
+  _err(e, where) {
+    this._errCount = (this._errCount || 0) + 1;
+    if (this._errCount < 20) console.error('[' + where + ']', e);
+  }
+
   /** Run fn after `sec` seconds of game time (pauses with the game). */
   after(sec, fn) { this.timers.push({ t: sec, fn }); }
 
@@ -193,6 +198,11 @@ export class Game {
       this.audio.unlock();
       if (!this.input.locked && !this.input.cursorMode && this.state === 'play' && !this.input.isTouch) this.input.requestLock();
     });
+    this.lockHint = () => {
+      setTimeout(() => {
+        if (this.state === 'play' && !this.input.locked && !this.input.cursorMode && !this.input.isTouch) ctp.classList.remove('hidden');
+      }, 500);
+    };
     this.input.onLockChange = (locked) => {
       if (locked) { ctp.classList.add('hidden'); if (this.state === 'play') this.sdk.gameplayStart(); }
       else if (!this.input.cursorMode && this.state === 'play') this.pause();
@@ -285,16 +295,19 @@ export class Game {
     const wages = this.upgrades.wages(), bills = this.dailyBills();
     e.spend(wages, 'Wages', true); e.spend(bills, 'Bills', true);
     e.lifetime.days++;
-    const profit = s.revenue - s.expenses;
+    const profit = s.revenue - s.expenses + s.spendUpgrades; // upgrades are investments, not daily loss
     const row = (k, v, cls = '') => `<span>${k}</span><span class="v ${cls}">${v}</span>`;
     document.getElementById('sum-title').textContent = `DAY ${this.clock.day} COMPLETE`;
     document.getElementById('sum-grid').innerHTML = [
       row('⛽ Fuel sales', money(s.fuelRevenue), 'pos'), row('🛒 Shop sales', money(s.shopRevenue), 'pos'), row('💰 Tips', money(s.tips), 'pos'),
-      row('📦 Stock, fuel & repairs', '−' + money(s.expenses - wages - bills), 'neg'), row('🧑‍🔧 Staff wages', '−' + money(wages), 'neg'), row('💡 Electricity & bills', '−' + money(bills), 'neg'),
+      row('📦 Stock & fuel orders', '−' + money(s.spendStock), 'neg'), row('🔧 Upgrades (investment)', '−' + money(s.spendUpgrades), 'neg'),
+      ...(s.spendOther > 0.01 ? [row('🩹 Repairs & refunds', '−' + money(s.spendOther), 'neg')] : []),
+      row('🧑‍🔧 Staff wages', '−' + money(wages), 'neg'), row('💡 Electricity & bills', '−' + money(bills), 'neg'),
       row('👥 Customers served', s.fuelCustomers + s.registerCustomers), row('😂 Funny moments', s.funny), row('⭐ Reputation', `${s.repStart.toFixed(1)} → ${e.reputation.toFixed(1)}`),
     ].join('');
     const pEl = document.getElementById('sum-profit');
     pEl.textContent = (profit >= 0 ? '+' : '') + money(profit);
+    pEl.title = 'Operating profit (excludes upgrade purchases)';
     pEl.style.color = profit >= 0 ? '#9cffbf' : '#ff9c9c';
     const dbl = document.getElementById('sum-double');
     dbl.disabled = s.tips < 1; dbl.textContent = `▶ Watch ad: DOUBLE today's tips (+${money(s.tips)})`;
@@ -353,7 +366,10 @@ export class Game {
   }
 
   frame(real, noRender = false) {
-    const dt = this.state === 'play' ? real : 0;
+    // comedic slow-motion right after a funny moment
+    let scale = 1;
+    if (this.slowmo > 0) { this.slowmo -= real; scale = this.slowmo > 0 ? 0.35 : 1; }
+    const dt = this.state === 'play' ? real * scale : 0;
     this.time += dt;
     const inp = this.input;
     if (this.state === 'play') {
@@ -363,27 +379,32 @@ export class Game {
     }
     this.player.update(this.state === 'play' ? dt : 0);
     this.sky.update(real * (this.state === 'play' ? 1 : 0) + 0.0001, this.clock.hour, this.player.pos, this.renderer.renderer);
-    if (dt > 0) {
+    if (dt > 0) this.safeUpdate(dt);
+    this.postUpdate(real, noRender);
+  }
+
+  safeUpdate(dt) {
+    {
       if (this.timers.length) {
         const due = [];
         for (const tm of this.timers) { tm.t -= dt; if (tm.t <= 0) due.push(tm); }
         if (due.length) { this.timers = this.timers.filter((tm) => tm.t > 0); for (const tm of due) { try { tm.fn(); } catch (e) { console.error(e); } } }
       }
-      this.traffic.update(dt, this.clock.hour);
-      this.customers.update(dt);
-      this.physics.step(dt);
-      this.fuel.update(dt, this.player);
-      this.register.update(dt);
-      this.inventory.update(dt);
-      this.deliveries.update(dt);
-      this.props.update(dt);
-      this.cleaning.update(dt);
-      this.funny.update(dt);
-      this.upgrades.update(dt);
-      this.animals.update(dt);
-      this.tutorial.update(dt);
-      this.economy.update(dt);
-      this.particles.update(dt);
+      try { this.traffic.update(dt, this.clock.hour); } catch (e) { this._err(e, 'traffic'); }
+      try { this.customers.update(dt); } catch (e) { this._err(e, 'customers'); }
+      try { this.physics.step(dt); } catch (e) { this._err(e, 'physics'); }
+      try { this.fuel.update(dt, this.player); } catch (e) { this._err(e, 'fuel'); }
+      try { this.register.update(dt); } catch (e) { this._err(e, 'register'); }
+      try { this.inventory.update(dt); } catch (e) { this._err(e, 'inventory'); }
+      try { this.deliveries.update(dt); } catch (e) { this._err(e, 'deliveries'); }
+      try { this.props.update(dt); } catch (e) { this._err(e, 'props'); }
+      try { this.cleaning.update(dt); } catch (e) { this._err(e, 'cleaning'); }
+      try { this.funny.update(dt); } catch (e) { this._err(e, 'funny'); }
+      try { this.upgrades.update(dt); } catch (e) { this._err(e, 'upgrades'); }
+      try { this.animals.update(dt); } catch (e) { this._err(e, 'animals'); }
+      try { this.tutorial.update(dt); } catch (e) { this._err(e, 'tutorial'); }
+      try { this.economy.update(dt); } catch (e) { this._err(e, 'economy'); }
+      try { this.particles.update(dt); } catch (e) { this._err(e, 'particles'); }
       // dusty weather spawns extra tumbleweeds
       if (this.sky.weather.dust > 0.5 && Math.random() < dt * 0.08) this.props.spawnTumbleweed(chance(0.2));
       const actors = [this.player.pos, ...this.customers.list.filter((c) => !c.inCar).map((c) => c.pos)];
@@ -391,8 +412,13 @@ export class Game {
       this._saveT += dt;
       if (this._saveT > 45) { this._saveT = 0; this.save(); }
     }
+  }
+
+  postUpdate(real, noRender) {
+    const inp = this.input;
     this.station.updateLighting(this.sky.nightFactor, real, this.time);
-    this.renderer.bloom.strength = 0.45 - this.sky.nightFactor * 0.17;
+    this.renderer.bloom.strength = 0.26 + this.sky.nightFactor * 0.06;
+    this.renderer.bloom.threshold = 3.2 - this.sky.nightFactor * 1.4;
     // audio
     if (this.audio.ready) {
       this.audio.setListener(this.player.camera);

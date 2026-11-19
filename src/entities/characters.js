@@ -101,7 +101,7 @@ const CLOTH = [0x2b4c7e, 0x7a1f1f, 0x2f5d3a, 0x444444, 0xd8c8a8, 0x6a3e8a, 0xc96
 export class CharacterLibrary {
   async load(loader, onProgress) {
     const base = './assets/models/';
-    const files = ['michelle', 'cowboy', 'biker', 'anims', 'fox', 'bird'];
+    const files = ['michelle', 'cowboy', 'biker', 'anims', 'fox'];
     const res = {};
     let done = 0;
     await Promise.all(files.map((f) => new Promise((resolve, reject) => {

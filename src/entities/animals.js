@@ -11,17 +11,21 @@ export class Animals {
     this.game = game;
     this.birds = [];
     this.fox = null;
-    const birdGltf = lib.raw.bird;
-    if (birdGltf) {
-      for (let i = 0; i < 4; i++) {
-        const m = birdGltf.scene.clone(true);
-        m.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.color = new THREE.Color(0x2a221c); o.castShadow = true; } });
-        m.scale.setScalar(0.035);
-        const mixer = new THREE.AnimationMixer(m);
-        const a = mixer.clipAction(birdGltf.animations[0]); a.play(); a.time = Math.random(); a.timeScale = 0.6;
-        game.scene.add(m);
-        this.birds.push({ m, mixer, r: rand(30, 70), h: rand(35, 60), speed: rand(0.08, 0.14), t: rand(0, 6), cx: rand(-30, 30), cz: rand(-40, 30) });
-      }
+    // procedural vultures circling overhead (body + two flapping wings)
+    const mat = new THREE.MeshStandardMaterial({ color: 0x241c16, roughness: 0.9, side: THREE.DoubleSide });
+    for (let i = 0; i < 4; i++) {
+      const m = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.18, 0.7, 4, 8), mat); body.rotation.x = Math.PI / 2; m.add(body);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), new THREE.MeshStandardMaterial({ color: 0x8a3a2a, roughness: 0.8 })); head.position.z = 0.55; m.add(head);
+      const wingGeo = new THREE.BufferGeometry();
+      wingGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0.25, 1.9, 0, 0.05, 1.7, 0, -0.35, 0, 0, -0.3], 3));
+      wingGeo.setIndex([0, 1, 2, 0, 2, 3]); wingGeo.computeVertexNormals();
+      const wl = new THREE.Mesh(wingGeo, mat), wr = new THREE.Mesh(wingGeo, mat); wr.scale.x = -1;
+      m.add(wl, wr);
+      const tail = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.45, 4), mat); tail.rotation.x = -Math.PI / 2; tail.position.z = -0.6; tail.scale.y = 0.3; m.add(tail);
+      m.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+      game.scene.add(m);
+      this.birds.push({ m, wl, wr, r: rand(30, 70), h: rand(35, 60), speed: rand(0.08, 0.14), t: rand(0, 6), cx: rand(-30, 30), cz: rand(-40, 30), flap: rand(0, 6) });
     }
     this.foxGltf = lib.raw.fox;
   }
@@ -48,10 +52,14 @@ export class Animals {
     const g = this.game;
     for (const b of this.birds) {
       b.t += dt * b.speed;
-      b.mixer.update(dt);
+      b.flap += dt;
       const x = b.cx + Math.cos(b.t) * b.r, z = b.cz + Math.sin(b.t) * b.r;
       b.m.position.set(x, b.h + Math.sin(b.t * 3) * 2, z);
-      b.m.rotation.set(0.15, -b.t - Math.PI, 0.25);
+      b.m.rotation.set(0, -b.t, 0.3);
+      // mostly gliding, occasional lazy flaps
+      const cyc = b.flap % 7;
+      const a = cyc < 1.2 ? Math.sin(cyc * Math.PI * 2.5) * 0.45 : 0.08;
+      b.wl.rotation.z = a; b.wr.rotation.z = -a;
     }
     const f = this.fox;
     if (!f) return;

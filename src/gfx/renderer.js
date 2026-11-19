@@ -16,7 +16,7 @@ export const QUALITY = {
 
 /** Kills NaN/Inf and clamps extreme HDR values (half-float overflow from sharp speculars). */
 const SanitizeShader = {
-  uniforms: { tDiffuse: { value: null }, maxV: { value: 48.0 } },
+  uniforms: { tDiffuse: { value: null }, maxV: { value: 14.0 } },
   vertexShader: /* glsl */`varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: /* glsl */`
     uniform sampler2D tDiffuse; uniform float maxV; varying vec2 vUv;
@@ -125,7 +125,7 @@ export class Renderer {
       this.gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
     } catch (e) { /* api drift */ }
     this.composer.addPass(this.gtao);
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.45, 0.55, 2.4);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.3, 0.4, 3.2);
     this.composer.addPass(this.bloom);
     this.output = new OutputPass();
     this.composer.addPass(this.output);

@@ -315,9 +315,9 @@ export class Traffic {
     return p;
   }
 
-  spawnModel(type) {
+  spawnModel(type, opts = {}) {
     if (type === 'box' || type === 'tanker') return buildTruck(type);
-    return buildCar(type);
+    return buildCar(type, opts);
   }
 
   randomType() {
@@ -360,7 +360,7 @@ export class Traffic {
       if (through < 14) this.spawnThrough();
       this.spawnTimer = rand(2.5, 7) / rush;
     }
-    for (const c of [...this.cars]) c.update(dt);
+    for (const c of [...this.cars]) { try { c.update(dt); } catch (e) { console.error('car error', e); } }
     // engine sound pool: nearest moving cars
     const audio = this.game.audio;
     if (audio.ready) {

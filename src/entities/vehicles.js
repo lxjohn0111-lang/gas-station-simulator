@@ -283,8 +283,8 @@ export function buildCar(type = 'sedan', opts = {}) {
   // bumpers
   const bumpY = T.sill + 0.12;
   const bumperMat = old ? S.chrome : (chance(0.5) ? S.plastic : paint);
-  add(new THREE.BoxGeometry(0.22, 0.2, W - 0.12), bumperMat, front - 0.02, bumpY, 0);
-  add(new THREE.BoxGeometry(0.22, 0.2, W - 0.12), bumperMat, rear + 0.02, bumpY, 0);
+  add(new THREE.BoxGeometry(0.22, 0.18, W - 0.16), bumperMat, front - 0.1, bumpY, 0);
+  add(new THREE.BoxGeometry(0.22, 0.18, W - 0.16), bumperMat, rear + 0.1, bumpY, 0);
   // grille
   const noseY = T.nose;
   add(new THREE.BoxGeometry(0.06, Math.max(0.1, noseY - bumpY - 0.12), W * 0.5), S.grille, front + 0.01, (noseY + bumpY) / 2 + 0.02, 0, { cast: false });
@@ -380,6 +380,7 @@ export function buildCar(type = 'sedan', opts = {}) {
   // rust/old car styling
   if (old) { paint.color.lerp(new THREE.Color(0x8a7a66), 0.25); }
 
+  mergeStaticParts(g, new Set([...hl, ...tl, beam, fhole]));
   return {
     group: g, type, T, wheels, paint, body: bodyMesh,
     dims: { L, W, H: T.roof },
@@ -390,6 +391,38 @@ export function buildCar(type = 'sedan', opts = {}) {
     doorLocal: new THREE.Vector3(front - T.ws - 1.05, 0, -(W / 2 + 0.55)),
     big: T.L > 5,
   };
+}
+
+/** Merge a vehicle's static child meshes per material to cut draw calls. */
+function mergeStaticParts(g, keep) {
+  const groups = new Map();
+  for (const m of [...g.children]) {
+    if (!m.isMesh || keep.has(m) || Array.isArray(m.material)) continue;
+    const k = m.material.uuid;
+    if (!groups.has(k)) groups.set(k, { mat: m.material, items: [] });
+    groups.get(k).items.push(m);
+  }
+  for (const { mat, items } of groups.values()) {
+    if (items.length < 2) continue;
+    const geos = [];
+    for (const m of items) {
+      m.updateMatrix();
+      let geo = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
+      geo.applyMatrix4(m.matrix);
+      for (const a of Object.keys(geo.attributes)) if (!['position', 'normal', 'uv', 'color'].includes(a)) geo.deleteAttribute(a);
+      if (!geo.attributes.uv) geo.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(geo.attributes.position.count * 2), 2));
+      if (mat.vertexColors && !geo.attributes.color) geo.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(geo.attributes.position.count * 3).fill(1), 3));
+      if (!mat.vertexColors && geo.attributes.color) geo.deleteAttribute('color');
+      geos.push(geo);
+      g.remove(m);
+    }
+    const merged = mergeGeometries(geos, false);
+    if (!merged) { items.forEach((m) => g.add(m)); continue; }
+    const mm = new THREE.Mesh(merged, mat);
+    mm.castShadow = items.some((m) => m.castShadow); mm.receiveShadow = true;
+    mm.renderOrder = items[0].renderOrder;
+    g.add(mm);
+  }
 }
 
 let beamMat = null;

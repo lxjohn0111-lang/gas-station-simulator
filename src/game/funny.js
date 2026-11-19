@@ -27,7 +27,7 @@ const CAPTIONS = {
 export class Funny {
   constructor(game) {
     this.game = game;
-    this.timer = 30;
+    this.timer = 22;
     this.cooldown = 0;
     this.combo = 0;
     this.comboTimer = 0;
@@ -44,6 +44,7 @@ export class Funny {
     g.economy.addXP(4);
     if (this.cooldown <= 0) {
       this.cooldown = 1.2;
+      if (pos && g.player.pos.distanceTo(pos) < 22) g.slowmo = 0.55;
       const cap = pick(CAPTIONS[type] || CAPTIONS.trip);
       g.ui.funnyCam(cap, this.combo);
       g.audio.play('laugh', { vol: 0.55, delay: 0.25 });
@@ -88,7 +89,7 @@ export class Funny {
     if (!g.clock.open) return;
     this.timer -= dt;
     if (this.timer <= 0) {
-      this.timer = rand(38, 75);
+      this.timer = rand(26, 52);
       this.trigger();
     }
   }

@@ -239,6 +239,17 @@ export class Player {
       }
       if (best && bd > 0.93) it = best.capHit.userData.interact;
     }
+    // forgiving targeting for nozzles sitting in cars (small meshes)
+    if (!it && !this.held) {
+      const f = this.forward(_v);
+      for (const s of g.fuel.services) {
+        if (!s.nozzle || s.nozzle.state !== 'inCar') continue;
+        const np = s.nozzle.group.position;
+        const d = np.distanceTo(this.eye);
+        if (d > 3.2) continue;
+        if (np.clone().sub(this.eye).normalize().dot(f) > 0.9) { it = s.nozzle.group.children[0].userData.interact; break; }
+      }
+    }
     this.target = it;
     const prompt = it ? it.system.prompt(it, this) : null;
     g.ui.setPrompt(prompt);
@@ -295,8 +306,8 @@ export class Player {
     if (best) {
       g.audio.play('hit', { pos: best.pos });
       this.shake = 0.25;
-      const imp = f.clone().multiplyScalar(55).setY(18);
-      best.knock(f.clone().multiplyScalar(3).setY(1.2), imp, 'shove', 'torso');
+      const imp = f.clone().multiplyScalar(110).setY(45);
+      best.knock(f.clone().multiplyScalar(4.5).setY(2.2), imp, 'shove', 'torso');
       if (best.isFleeing) { g.ui.toast('👮 Tackled the shoplifter!', 'good'); }
       else { g.economy.rep(-0.04, best.pos); best.setMood(-0.4); }
       return;

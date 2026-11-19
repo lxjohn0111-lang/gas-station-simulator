@@ -56,7 +56,12 @@ export class Tutorial {
   render() {
     const s = this.step;
     if (!s) return;
-    this.game.ui.setObjectives([{ title: s.title, text: s.text + (s.hint ? `<br><span style="opacity:.75">${s.hint}</span>` : '') }]);
+    let text = s.text + (s.hint ? `<br><span style="opacity:.75">${s.hint}</span>` : '');
+    if (this.game.input.isTouch) {
+      text = text.replace(/\(<b>WASD<\/b>\)/g, '(joystick)').replace(/<b>Hold LMB<\/b>/g, '<b>Hold USE</b>').replace(/<b>LMB<\/b>/g, '<b>USE</b>')
+        .replace(/<b>TAB<\/b>/g, '<b>▦</b> button').replace(/<b>RMB<\/b>/g, '<b>⤴</b>').replace(/<b>Q<\/b>/g, '<b>⤴</b>').replace(/hold <b>E<\/b>/g, 'hold <b>E</b>');
+    }
+    this.game.ui.setObjectives([{ title: s.title, text }]);
   }
 
   update(dt) {

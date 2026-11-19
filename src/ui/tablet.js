@@ -39,7 +39,7 @@ export class Tablet {
     g.ui.tabletOpen = false;
     g.input.cursorMode = false;
     document.body.style.cursor = 'none';
-    g.input.requestLock();
+    g.input.requestLock(); g.lockHint && g.lockHint();
     g.audio.play('click', { pitch: 0.8 });
   }
 

@@ -123,7 +123,7 @@ export class Props {
           const cp = c.pos;
           const dx = cp.x - _v.x, dz = cp.z - _v.z;
           if (dx * dx + dz * dz < 0.5 * 0.5 && _v.y > cp.y + 0.2 && _v.y < cp.y + 1.95) {
-            const imp = new THREE.Vector3(b.velocity.x, Math.max(1, b.velocity.y) + 2, b.velocity.z).multiplyScalar(b.mass * 1.2 + 6);
+            const imp = new THREE.Vector3(b.velocity.x, Math.max(1, b.velocity.y) + 2, b.velocity.z).multiplyScalar(b.mass * 2.2 + 12);
             const part = _v.y > cp.y + 1.45 ? 'head' : 'torso';
             g.audio.play('bonk', { pos: _v });
             g.particles.stars(_v.clone(), 8);

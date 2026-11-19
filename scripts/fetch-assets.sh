@@ -14,7 +14,6 @@ get "$T/Michelle.glb"          michelle.glb
 get "$T/readyplayer.me.glb"    cowboy.glb
 get "$T/Soldier.glb"           biker.glb
 get "$T/Xbot.glb"              xbot.glb
-get "$T/Stork.glb"             bird.glb
 get "$K/Fox/glTF-Binary/Fox.glb" fox.glb
 GT=node_modules/.bin/gltf-transform
 for f in michelle cowboy biker; do
@@ -23,5 +22,4 @@ done
 # Animation library: keep the skeleton + clips, mesh is not rendered.
 $GT optimize "$SRC/xbot.glb" "$OUT/anims.glb" --compress meshopt --simplify false --join false --instance false --flatten false --palette false
 $GT optimize "$SRC/fox.glb" "$OUT/fox.glb" --compress meshopt --texture-compress webp --simplify false --join false --flatten false --palette false
-cp "$SRC/bird.glb" "$OUT/bird.glb"
 ls -la "$OUT"
