@@ -1,19 +1,21 @@
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { Ragdoll } from '../physics/ragdoll.js';
+import { loadGLB } from '../core/assets.js';
 import { pick, rand, chance, easeInOut, clamp } from '../core/utils.js';
 
 const canon = (name) => name.replace(/^mixamorig[:_]?/, '');
 
-function collectBones(root) {
+function collectBones(root, byName = false) {
   const map = {};
-  root.traverse((o) => { if (o.isBone && !map[canon(o.name)]) map[canon(o.name)] = o; });
+  // byName: rigs without a skin (animation library) expose plain Object3D joints
+  root.traverse((o) => { if ((o.isBone || (byName && /^mixamorig/.test(o.name))) && !map[canon(o.name)]) map[canon(o.name)] = o; });
   return map;
 }
 
 /** Samples world rotations of a source rig while playing a clip. */
 function sampleSource(scene, clip, fps = 30) {
-  const bones = collectBones(scene);
+  const bones = collectBones(scene, true);
   scene.updateMatrixWorld(true);
   const rest = {};
   for (const [n, b] of Object.entries(bones)) rest[n] = { wq: b.getWorldQuaternion(new THREE.Quaternion()), wp: b.getWorldPosition(new THREE.Vector3()), lq: b.quaternion.clone(), lp: b.position.clone() };
@@ -100,12 +102,12 @@ const CLOTH = [0x2b4c7e, 0x7a1f1f, 0x2f5d3a, 0x444444, 0xd8c8a8, 0x6a3e8a, 0xc96
 
 export class CharacterLibrary {
   async load(loader, onProgress) {
-    const base = './assets/models/';
+    const base = 'assets/models/';
     const files = ['michelle', 'cowboy', 'biker', 'anims', 'fox'];
     const res = {};
     let done = 0;
     await Promise.all(files.map((f) => new Promise((resolve, reject) => {
-      loader.load(base + f + '.glb', (g) => { res[f] = g; done++; onProgress && onProgress(done / files.length); resolve(); }, undefined, (e) => { console.error('model load failed', f, e); res[f] = null; done++; resolve(); });
+      loadGLB(loader, base + f + '.glb', (g) => { res[f] = g; done++; onProgress && onProgress(done / files.length); resolve(); }, (e) => { console.error('model load failed', f, e); res[f] = null; done++; resolve(); });
     })));
     this.raw = res;
     this.templates = {};

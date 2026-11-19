@@ -262,7 +262,6 @@ def gen_metal():
     scratches = np.asarray(img, np.float32) / 255.0
     grime = np.clip((fbm(N, 3, 5, 0.6, 63) - 0.5) * 2, 0, 1)
     save_gray('metal_r.jpg', 0.35 + base * 0.2 + grime * 0.3 - scratches * 0.2)
-    save_gray('grime.jpg', np.clip(grime * 0.8 + base * 0.3, 0, 1))
     save_normal('metal_n.jpg', base * 0.2 - scratches * 0.4, 1.5)
 
 
@@ -371,9 +370,6 @@ def gen_decals():
     # soft blob shadow
     a4 = np.clip(1 - r, 0, 1) ** 2
     save_rgba('blob.png', np.zeros((n, n, 3)), a4)
-    # puddle normal-ish mask (for spill)
-    a5 = np.clip((1 - r) * 2.0 + (noise - 0.5) * 2.2 - 0.8, 0, 1)
-    save_rgba('spill.png', np.stack([noise * 0 + 0.02, noise * 0 + 0.02, noise * 0 + 0.02], -1), a5)
 
 
 def gen_sky_noise():
@@ -397,4 +393,3 @@ if __name__ == '__main__':
     gen_rock()
     gen_tread()
     gen_decals()
-    gen_sky_noise()

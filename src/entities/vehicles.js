@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { canvasTexture } from '../gfx/textures.js';
+import { assetURL } from '../core/assets.js';
 import { pick, rand, chance, clamp, smoothstep } from '../core/utils.js';
 
 /**
@@ -25,7 +26,7 @@ const PAINTS = [0xf2f2f0, 0xc9cdd2, 0x8d9399, 0x2a2c30, 0x111214, 0x8f1a1a, 0xb3
 let SHARED = null;
 function shared() {
   if (SHARED) return SHARED;
-  const treadNormal = new THREE.TextureLoader().load('./assets/tex/tread_n.jpg');
+  const treadNormal = new THREE.TextureLoader().load(assetURL('assets/tex/tread_n.jpg'));
   treadNormal.wrapS = treadNormal.wrapT = THREE.RepeatWrapping; treadNormal.repeat.set(1, 8);
   SHARED = {
     glass: new THREE.MeshPhysicalMaterial({ color: 0x0b0f13, metalness: 0.1, roughness: 0.1, transparent: true, opacity: 0.82, clearcoat: 1, clearcoatRoughness: 0.1, envMapIntensity: 1.8 }),

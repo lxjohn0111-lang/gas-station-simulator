@@ -51,7 +51,7 @@ export class Input {
     });
     window.addEventListener('mousemove', (e) => {
       this._setPointer(e.clientX, e.clientY);
-      if (this.locked) {
+      if (this.locked || (this.freeLook && !this.cursorMode)) {
         // Clamp absurd spikes some browsers produce on lock.
         const mx = Math.max(-300, Math.min(300, e.movementX || 0));
         const my = Math.max(-300, Math.min(300, e.movementY || 0));
@@ -64,7 +64,7 @@ export class Input {
       this.locked = document.pointerLockElement === this.canvas;
       if (this.onLockChange) this.onLockChange(this.locked);
     });
-    document.addEventListener('pointerlockerror', () => { this.locked = false; });
+    document.addEventListener('pointerlockerror', () => { this.locked = false; this.freeLook = true; if (this.onLockChange) this.onLockChange(false, true); });
 
     if (this.isTouch) this._bindTouch();
   }
@@ -77,10 +77,14 @@ export class Input {
 
   requestLock() {
     if (this.isTouch) return;
-    const plain = () => { try { const p2 = this.canvas.requestPointerLock(); if (p2 && p2.catch) p2.catch(() => {}); } catch (e) { /* noop */ } };
+    // If the page is embedded somewhere that refuses pointer lock, fall back to
+    // "free look" (raw mouse movement while the cursor is over the game).
+    const fail = () => { this.freeLook = true; if (this.onLockChange) this.onLockChange(false, true); };
+    if (!this.canvas.requestPointerLock) { fail(); return; }
+    const plain = () => { try { const p2 = this.canvas.requestPointerLock(); if (p2 && p2.catch) p2.catch(fail); } catch (e) { fail(); } };
     try {
       const p = this.canvas.requestPointerLock({ unadjustedMovement: true });
-      if (p && p.catch) p.catch((e) => { if (e && e.name === 'NotSupportedError') plain(); });
+      if (p && p.catch) p.catch((e) => { if (e && e.name === 'NotSupportedError') plain(); else if (e && e.name === 'SecurityError') fail(); });
     } catch (e) { plain(); }
   }
   exitLock() { if (document.pointerLockElement) document.exitPointerLock(); }

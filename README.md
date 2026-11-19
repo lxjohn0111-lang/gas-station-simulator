@@ -83,12 +83,26 @@ work).
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
-npm run build      # production build in dist/
-npm run zip        # build + dist zipped as last-chance-gas-crazygames.zip (upload this to CrazyGames)
+npm run dev            # http://localhost:5173
+npm run build:single   # ONE self-contained file (see below)
 ```
 
-The total build is about 7 MB (textures + meshopt-compressed models). Asset pipelines:
+`npm run build:single` produces a **single file** with the JS, CSS, every texture (WebP)
+and every model embedded. Nothing else needs to be uploaded:
+
+- `dist-single/index.html` (about 8 MB). Upload this one file to CrazyGames (it includes
+  the SDK v3 script tag).
+- `dist-single/last-chance-gas.zip` is the same file zipped. The zip contains only
+  `index.html`.
+- `artifact/last-chance-gas.html` is the same game without the SDK tag, for hosting as a
+  Claude Artifact.
+
+Don't upload the source `index.html` from the repo root. It points at `./src/` and the
+`./assets/` folder, and on its own it renders as unstyled text.
+
+`npm run build` still makes the classic multi-file build in `dist/`, if you prefer that
+(upload the whole folder). Models use quantized geometry rather than a WebAssembly decoder,
+so they load in strict sandboxes. Asset pipelines:
 
 - `scripts/gen_textures.py` regenerates every PBR texture procedurally (numpy + Pillow).
 - `scripts/fetch-assets.sh` re-downloads and re-optimises the 3D models (gltf-transform).

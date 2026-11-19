@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { Renderer } from '../gfx/renderer.js';
 import { TextureLib } from '../gfx/textures.js';
 import { createMaterials } from '../gfx/materials.js';
@@ -88,7 +87,6 @@ export class Game {
     const texDone = new Promise((res) => { manager.onLoad = res; manager.onError = () => {}; setTimeout(res, 15000); });
 
     const loader = new GLTFLoader();
-    loader.setMeshoptDecoder(MeshoptDecoder);
     this.chars = new CharacterLibrary();
     const charsDone = this.chars.load(loader, (p) => { prog.models = p; report('Waking up the locals…'); });
 
@@ -196,15 +194,15 @@ export class Game {
     ctp.addEventListener('click', lockOrStart);
     this.canvas.addEventListener('click', () => {
       this.audio.unlock();
-      if (!this.input.locked && !this.input.cursorMode && this.state === 'play' && !this.input.isTouch) this.input.requestLock();
+      if (!this.input.locked && !this.input.freeLook && !this.input.cursorMode && this.state === 'play' && !this.input.isTouch) this.input.requestLock();
     });
     this.lockHint = () => {
       setTimeout(() => {
-        if (this.state === 'play' && !this.input.locked && !this.input.cursorMode && !this.input.isTouch) ctp.classList.remove('hidden');
+        if (this.state === 'play' && !this.input.locked && !this.input.freeLook && !this.input.cursorMode && !this.input.isTouch) ctp.classList.remove('hidden');
       }, 500);
     };
-    this.input.onLockChange = (locked) => {
-      if (locked) { ctp.classList.add('hidden'); if (this.state === 'play') this.sdk.gameplayStart(); }
+    this.input.onLockChange = (locked, failed = false) => {
+      if (locked || failed) { ctp.classList.add('hidden'); if (this.state === 'play') this.sdk.gameplayStart(); }
       else if (!this.input.cursorMode && this.state === 'play') this.pause();
     };
     document.addEventListener('keydown', (e) => {
@@ -213,8 +211,12 @@ export class Game {
     });
     window.addEventListener('pointerdown', () => this.audio.unlock(), { once: false });
     $('btn-resume').addEventListener('click', () => { this.resume(); if (!this.input.isTouch) this.input.requestLock(); });
-    $('btn-reset').addEventListener('click', () => {
-      if (confirm('Reset your station and start over?')) { clearSave(); location.reload(); }
+    const resetBtn = $('btn-reset');
+    resetBtn.addEventListener('click', () => {
+      // two-step confirm built into the page (native confirm() is unavailable in some embeds)
+      if (resetBtn.dataset.armed) { clearSave(); location.reload(); return; }
+      resetBtn.dataset.armed = '1'; resetBtn.textContent = 'Click again to erase your station';
+      setTimeout(() => { delete resetBtn.dataset.armed; resetBtn.textContent = 'Reset save'; }, 4000);
     });
     const q = $('set-quality'), sens = $('set-sens'), vol = $('set-vol'), mus = $('set-music'), fov = $('set-fov'), inv = $('set-invert');
     q.value = this.settings.quality; sens.value = this.settings.sensitivity; vol.value = this.settings.volume; mus.value = this.settings.music; fov.value = this.settings.fov; inv.checked = this.settings.invertY;

@@ -128,7 +128,7 @@ export class Player {
       return;
     }
     this.viewmodel.visible = true;
-    const playing = g.state === 'play' && !g.ui.tabletOpen && (inp.locked || inp.isTouch);
+    const playing = g.state === 'play' && !g.ui.tabletOpen && (inp.locked || inp.isTouch || inp.freeLook);
     // look
     const look = inp.consumeLook();
     if (playing) {

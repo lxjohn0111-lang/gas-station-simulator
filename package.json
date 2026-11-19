@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "zip": "npm run build && cd dist && zip -r ../last-chance-gas-crazygames.zip ."
+    "zip": "node scripts/build-single.mjs",
+    "build:single": "node scripts/build-single.mjs"
   },
   "dependencies": {
     "cannon-es": "^0.20.0",

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
+import { assetURL } from '../core/assets.js';
 
-const BASE = './assets/tex/';
 
 /** Loads the generated PBR textures and creates canvas-based textures. */
 export class TextureLib {
@@ -14,7 +14,7 @@ export class TextureLib {
   get(name, { srgb = true, repeat = 1, aniso = 8 } = {}) {
     const key = name + '|' + srgb + '|' + repeat;
     if (this.cache.has(key)) return this.cache.get(key);
-    const t = this.loader.load(BASE + name);
+    const t = this.loader.load(assetURL('assets/tex/' + name));
     t.wrapS = t.wrapT = THREE.RepeatWrapping;
     t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
     t.anisotropy = Math.min(aniso, this.maxAniso);
