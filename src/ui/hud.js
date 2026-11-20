@@ -108,6 +108,7 @@ export class HUD {
   float(text, pos, cls = '') { this.game.labels.float(text, pos, cls); }
 
   registerMode(on) {
+    document.body.classList.toggle('register-mode', on);
     this.el.reg.classList.toggle('hidden', !on);
     this.el.cross.classList.toggle('hidden', on);
     if (on) this.setPrompt(null);

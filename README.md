@@ -52,14 +52,14 @@ overlays are the pause menu (Esc), the station tablet (Tab) and the end-of-day s
 
 | Action | Desktop | Mobile |
 | --- | --- | --- |
-| Move / look | WASD + mouse | Joystick + drag |
+| Move / look | WASD + mouse | Left stick + drag anywhere on the screen |
 | Sprint / jump | Shift / Space | Push stick fully / ⤒ |
 | Interact, pick up, hang up nozzle, use register | E (hold E to mop) | E |
 | Use (insert nozzle, pump, stock shelf) | Left mouse | USE |
-| Throw held item | Right mouse | ⤴ |
+| Throw held item | Right mouse | ⤴ THROW |
 | Drop item / let the hose retract | Q | — |
-| Shove (customers, fox, jammed door) | F | ✋ |
-| Station tablet | Tab | ▦ |
+| Shove (customers, fox, jammed door) | F | ✋ PUSH |
+| Station tablet | Tab | ▦ SHOP |
 | Pause | Esc / P | ❚❚ |
 
 At the register: click items to scan them. For cash, click bills and coins to build the change

@@ -8,7 +8,7 @@ import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 
 export const QUALITY = {
-  low: { scale: 0.7, maxDpr: 1, ao: false, shadow: 1024, bloom: true, fxaa: true, lensflare: false, shadowSoft: false, drawDist: 600 },
+  low: { scale: 0.85, maxDpr: 1.25, ao: false, shadow: 1024, bloom: true, fxaa: true, lensflare: false, shadowSoft: false, drawDist: 600 },
   medium: { scale: 0.85, maxDpr: 1.25, ao: false, shadow: 2048, bloom: true, fxaa: true, lensflare: true, shadowSoft: true, drawDist: 900 },
   high: { scale: 1, maxDpr: 1.5, ao: true, shadow: 2048, bloom: true, fxaa: true, lensflare: true, shadowSoft: true, drawDist: 1400 },
   ultra: { scale: 1, maxDpr: 2, ao: true, shadow: 4096, bloom: true, fxaa: true, lensflare: true, shadowSoft: true, drawDist: 2000 },
@@ -101,7 +101,7 @@ export class Renderer {
       const low = /SwiftShader|llvmpipe|Mali-4|Mali-T|Adreno \(TM\) [345]|PowerVR|Intel\(R\) HD Graphics [2-5]/i.test(gpu);
       const mobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
       if (low) name = 'low';
-      else if (mobile) name = 'medium';
+      else if (mobile) name = 'low';
       else if (/Intel/i.test(gpu)) name = 'medium';
     } catch (e) { /* ignore */ }
     this.detected = name;

@@ -201,6 +201,7 @@ export class Game {
         if (this.state === 'play' && !this.input.locked && !this.input.freeLook && !this.input.cursorMode && !this.input.isTouch) ctp.classList.remove('hidden');
       }, 500);
     };
+    this.input.onLockError = () => { if (this.state === 'play' && !this.input.cursorMode) ctp.classList.remove('hidden'); };
     this.input.onLockChange = (locked, failed = false) => {
       if (locked || failed) { ctp.classList.add('hidden'); if (this.state === 'play') this.sdk.gameplayStart(); }
       else if (!this.input.cursorMode && this.state === 'play') this.pause();
@@ -235,7 +236,7 @@ export class Game {
     window.addEventListener('beforeunload', () => this.save());
     this.sdk.onMuteChange = (m) => this.audio.setMuted(m);
     this.sdk.onAdStateChange = (playing) => this.audio.setMuted(playing || this.sdk.muted);
-    if (this.input.isTouch) { $('touch').classList.remove('hidden'); document.body.classList.add('touch'); }
+    if (this.input.isTouch) { $('touch').classList.remove('hidden'); document.body.classList.add('is-touch'); }
   }
 
   start() {
@@ -376,7 +377,10 @@ export class Game {
     const inp = this.input;
     if (this.state === 'play') {
       if (inp.pressed('Tab') && !this.register.active) this.tablet.toggle();
-      if (inp.pressed('Escape') && this.tablet.isOpen) this.tablet.close();
+      if (inp.pressed('Escape')) {
+        if (this.tablet.isOpen) this.tablet.close();
+        else if (!this.register.active && inp.isTouch) this.pause(); // on-screen pause button
+      }
       this.updateClock(dt);
     }
     this.player.update(this.state === 'play' ? dt : 0);

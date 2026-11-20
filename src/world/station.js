@@ -86,10 +86,10 @@ export class Station {
   buildLot() {
     const M = this.M;
     // main asphalt lot (in 4 strips to keep UVs sane)
-    this.plane(84, 37, M.asphalt, 0, 0.004, -18.5, { tile: 6 });
-    this.plane(84, 22, M.asphalt, 0, 0.004, 9, { tile: 6 });
+    this.plane(84, 37, M.asphalt, 0, 0.005, -18.5, { tile: 6 });
+    this.plane(84, 22, M.asphalt, 0, 0.005, 9, { tile: 6 });
     // concrete pad under the canopy
-    this.plane(34, 17, M.concrete, 0, 0.012, -17, { tile: 4 });
+    this.plane(34, 17, M.concrete, 0, 0.025, -17, { tile: 4 });
     // sidewalk in front of the shop (raised)
     this.box(24, 0.15, 3.2, M.sidewalk, 0, 0.075, -0.6, { tile: 4, cast: false });
     this.colliders.addPlatform(-12, 12, -2.2, 1, 0.15);
@@ -98,7 +98,7 @@ export class Station {
     // shop floor platform (interior floor built in shop.js)
     this.colliders.addPlatform(LAYOUT.shop.minX, LAYOUT.shop.maxX, LAYOUT.shop.minZ, LAYOUT.shop.maxZ, 0.15);
     // delivery pad
-    this.plane(8, 9, M.concrete, -14.5, 0.014, 8, { tile: 4 });
+    this.plane(8, 9, M.concrete, -14.5, 0.025, 8, { tile: 4 });
     // road-side curb islands defining entrance & exit
     const curb = (x0, x1) => {
       const w = x1 - x0;
@@ -110,8 +110,8 @@ export class Station {
     // painted markings: parking stalls in front of shop
     const stallXs = [-16.5, -13.5, 13.5, 16.5];
     for (const x of stallXs) {
-      this.box(0.12, 0.01, 5, M.paintLine, x - 1.5, 0.012, -5.2, { cast: false });
-      this.box(0.12, 0.01, 5, M.paintLine, x + 1.5, 0.012, -5.2, { cast: false });
+      this.box(0.12, 0.01, 5, M.paintLine, x - 1.5, 0.016, -5.2, { cast: false });
+      this.box(0.12, 0.01, 5, M.paintLine, x + 1.5, 0.016, -5.2, { cast: false });
       this.parking.push({ x, z: -4.8, rot: 0, taken: null });
       // wheel stop
       this.box(1.8, 0.14, 0.25, M.sidewalk, x, 0.07, -2.6, { cast: true, tile: 2 });
@@ -119,9 +119,9 @@ export class Station {
     // lane arrows & stop lines under canopy
     for (const z of [LAYOUT.laneZ.S, LAYOUT.laneZ.N]) {
       for (const ax of [-21, 21]) {
-        this.box(2.2, 0.01, 0.18, M.paintLine, ax, 0.016, z, { cast: false });
+        this.box(2.2, 0.01, 0.18, M.paintLine, ax, 0.036, z, { cast: false });
         const tri = new THREE.Mesh(new THREE.ConeGeometry(0.5, 0.9, 3), M.paintLine);
-        tri.rotation.set(-Math.PI / 2, 0, -Math.PI / 2); tri.scale.set(1, 1, 0.01); tri.position.set(ax + 1.4, 0.016, z);
+        tri.rotation.set(-Math.PI / 2, 0, -Math.PI / 2); tri.scale.set(1, 1, 0.01); tri.position.set(ax + 1.4, 0.04, z);
         this.batch.addMesh(tri, { cast: false });
       }
     }
@@ -131,13 +131,13 @@ export class Station {
       const x = (rng() - 0.5) * 70, z = -36 + rng() * 34;
       const s = 0.6 + rng() * 1.8;
       const m = new THREE.Mesh(planeGeo(s, s, 0), rng() < 0.6 ? this.M.stain : this.M.oil);
-      m.position.set(x, 0.02 + i * 0.0001, z); m.rotation.y = rng() * 6;
+      m.position.set(x, 0.045 + i * 0.0002, z); m.rotation.y = rng() * 6;
       m.receiveShadow = true;
       this.group.add(m);
     }
     for (let i = 0; i < 12; i++) {
       const m = new THREE.Mesh(planeGeo(6 + rng() * 6, 0.45, 0), this.M.skid);
-      m.position.set(-30 + rng() * 60, 0.021, -33 + rng() * 26); m.rotation.y = (rng() - 0.5) * 0.6;
+      m.position.set(-30 + rng() * 60, 0.04, -33 + rng() * 26); m.rotation.y = (rng() - 0.5) * 0.6;
       this.group.add(m);
     }
   }
@@ -357,9 +357,13 @@ export class Station {
         ctx.font = 'bold 30px Arial'; ctx.fillText(sub, w / 2, 190);
         ctx.font = 'bold 80px Impact'; ctx.fillStyle = '#ffe14a'; ctx.fillText('$1.99', w / 2, 300);
       });
-      const p = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 1.05), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7, side: THREE.DoubleSide }));
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 1.05), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7 }));
       p.position.set(x, fy + 1.6, S.minZ + 0.03); p.rotation.y = Math.PI;
       this.group.add(p);
+      // plain paper back seen from inside the shop (no mirrored text)
+      const back = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 1.05), this.posterBack || (this.posterBack = new THREE.MeshStandardMaterial({ color: 0xe8e2d6, roughness: 0.9 })));
+      back.position.set(x, fy + 1.6, S.minZ + 0.035);
+      this.group.add(back);
     };
     poster('ICE COLD', 'FIZZ COLA', '#c22a1f', -8.5); poster('HOT DOGS', '2 FOR', '#d27a12', -6.8); poster('JERKY', 'SAGUARO BRAND', '#5b3a1e', 7.2); poster('COFFEE', 'ANY SIZE', '#2f6f73', 8.8);
   }
@@ -502,7 +506,7 @@ export class Station {
       }
     }
     const top = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, w - 1.2, 14), bm[0]); top.rotation.z = Math.PI / 2; top.position.set(cx, 3.0, cz); g.add(top); this.washBrushes.push(top);
-    const floor = new THREE.Mesh(planeGeo(w, d, 2), M.concrete); floor.position.set(cx, 0.016, cz); floor.receiveShadow = true; g.add(floor);
+    const floor = new THREE.Mesh(planeGeo(w, d, 2), M.concrete); floor.position.set(cx, 0.03, cz); floor.receiveShadow = true; g.add(floor);
     g.visible = false;
     this.scene.add(g);
     this.carwashGroup = g;
@@ -579,7 +583,16 @@ export class Station {
     for (const leaf of this.doorLeaves) leaf.position.x = D.x + leaf.userData.side * (D.width / 4 + this.doorOpen * D.width * 0.48);
     this.colliders.setEnabled(this.doorCollider, this.doorOpen < 0.6);
     if (prev < 0.05 && this.doorOpen >= 0.05 && this.onDoorOpen) this.onDoorOpen();
-    // side door eases closed
+    // side (delivery) door swings open when someone walks up to it
+    const sd = LAYOUT.sideDoor;
+    for (const a of actors) {
+      if (Math.abs(a.x - sd.x) < 1.8 && Math.abs(a.z - sd.z) < 1.4) {
+        if (this.sideDoorOpen < 0.3 && this.game.audio) this.game.audio.play('carDoor', { pos: new THREE.Vector3(sd.x, 1.2, sd.z), vol: 0.5, pitch: 0.7 });
+        this.sideDoorOpen = 1.4;
+        break;
+      }
+    }
+    // and eases closed again
     if (this.sideDoorOpen > 0) {
       this.sideDoorOpen = Math.max(0, this.sideDoorOpen - dt * 0.35);
       this.sideDoorMesh.rotation.y = -Math.min(1, this.sideDoorOpen * 2) * 1.4;

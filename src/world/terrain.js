@@ -64,12 +64,12 @@ export function buildTerrain(scene, M, colliders) {
   const dashGeo = planeGeo(3, 0.14, 0);
   const dashes = new THREE.InstancedMesh(dashGeo, M.paintYellow, 300);
   const m4 = new THREE.Matrix4();
-  for (let i = 0; i < 300; i++) { m4.makeTranslation(-1300 + i * 9, 0.012, ROAD_Z); dashes.setMatrixAt(i, m4); }
+  for (let i = 0; i < 300; i++) { m4.makeTranslation(-1300 + i * 9, 0.018, ROAD_Z); dashes.setMatrixAt(i, m4); }
   dashes.receiveShadow = true;
   scene.add(dashes);
   for (const z of [ROAD_Z - ROAD_HALF + 0.35, ROAD_Z + ROAD_HALF - 0.35]) {
     const l = new THREE.Mesh(planeGeo(roadLen, 0.15, 0), M.paintLine);
-    l.position.set(0, 0.012, z); l.receiveShadow = true; scene.add(l);
+    l.position.set(0, 0.018, z); l.receiveShadow = true; scene.add(l);
   }
 
   // ---------------------------------------------------------------- mesas on the horizon

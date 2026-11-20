@@ -75,9 +75,19 @@ export class Customer {
     this.char.play('idle', 0);
     this.char.root.visible = !car.m.big;
   }
+  /** Where to get in/out: the side away from the pump island when parked at a pump. */
+  doorPoint(out = new THREE.Vector3()) {
+    const car = this.car, d = car.m.doorLocal;
+    let z = d.z;
+    if (this.slot && this.slot.island !== undefined && car.m.fuelCap) z = -car.m.fuelCap.side * Math.abs(d.z);
+    car.worldPoint(new THREE.Vector3(d.x, 0, z), out);
+    out.y = 0;
+    return out;
+  }
+
   exitCar() {
     if (!this.car) return;
-    const p = this.car.worldPoint(this.car.m.doorLocal, new THREE.Vector3());
+    const p = this.doorPoint(new THREE.Vector3());
     p.y = this.game.colliders.groundHeight(p.x, p.z);
     this.game.scene.add(this.char.root);
     this.char.root.visible = true;
@@ -103,6 +113,7 @@ export class Customer {
     this.arriveNear = near;
     this.state = 'walk';
     this.stuckTime = 0;
+    this.stuckCount = 0;
   }
 
   faceTowards(p, dt, rate = 8) {
@@ -142,7 +153,16 @@ export class Customer {
     this.lastPos.copy(root.position);
     if (this.stuckTime > 1.5) {
       this.stuckTime = 0;
-      const p = this.game.nav.findPath(root.position, this.moveTarget);
+      this.stuckCount = (this.stuckCount || 0) + 1;
+      const nav = this.game.nav;
+      if (this.stuckCount >= 3) {
+        // wedged between obstacles: hop to the nearest walkable cell
+        const [ix, iz] = nav.toCell(root.position.x, root.position.z);
+        const free = nav.nearestFree(ix, iz, 8);
+        if (free) { const c = nav.cellCenter(free[0], free[1]); root.position.x = c.x; root.position.z = c.z; }
+        if (this.stuckCount >= 6) { root.position.x = this.moveTarget.x; root.position.z = this.moveTarget.z; this.stuckCount = 0; }
+      }
+      const p = nav.findPath(root.position, this.moveTarget);
       if (p) { this.path = p; this.pathI = 0; } else this.pathI++;
     }
     return false;
@@ -300,6 +320,12 @@ export class CustomerManager {
     }
     for (const c of [...this.list]) {
       try { c.update(dt); } catch (e) { console.error('customer error', e); try { this.remove(c); } catch (e2) { /* noop */ } continue; }
+      // everyone waiting in the checkout line runs out of patience eventually
+      if (c.state === 'queue' && g.register.indexOf(c) >= 0) {
+        const served = g.register.current === c;
+        c.patience -= dt * (served ? 0.3 : 1);
+        if (c.patience <= 0 && !(served && g.register.active)) { g.register.leave(c); this.angryLeave(c, 'The line was too slow!'); }
+      }
       // fell into the void / out of range safety
       if (!c.inCar && (c.pos.y < -5 || Math.abs(c.pos.x) > 400)) this.remove(c);
     }
@@ -454,11 +480,11 @@ export class CustomerManager {
         if (c.timer <= 0 && c.inCar && !c.stayInCar) {
           if (chance(0.75)) {
             c.exitCar();
-            const sideOffset = new THREE.Vector3(-1.8, 0, -(car.halfW + 0.7));
+            const sideOffset = new THREE.Vector3(-1.8, 0, -car.m.fuelCap.side * (car.halfW + 0.75)); // stand on the side away from the pump
             const p = car.worldPoint(sideOffset, new THREE.Vector3());
             p.y = 0;
             c.walkTo(p, () => { c.state = 'waitCar'; });
-            c.resumeFn = () => { c.walkTo(car.worldPoint(new THREE.Vector3(-1.8, 0, -(car.halfW + 0.7))).setY(0), () => { c.state = 'waitCar'; }); };
+            c.resumeFn = () => { c.walkTo(car.worldPoint(new THREE.Vector3(-1.8, 0, -car.m.fuelCap.side * (car.halfW + 0.75))).setY(0), () => { c.state = 'waitCar'; }); };
             // maybe pop into the shop while fuelling
             if (c.payInside && chance(0.35)) { c.phase = 'shopWhileFuel'; this.goShopping(c, () => { c.phase = 'returnAfterShop'; }); }
           } else c.stayInCar = true;
@@ -478,7 +504,7 @@ export class CustomerManager {
       case 'returnAfterShop': {
         if (c.service.state === 'done') { this.afterFuel(c, true); }
         else if (c.state !== 'walk' && c.state !== 'waitCar') {
-          c.walkTo(car.worldPoint(new THREE.Vector3(-1.8, 0, -(car.halfW + 0.7))).setY(0), () => { c.state = 'waitCar'; });
+          c.walkTo(car.worldPoint(new THREE.Vector3(-1.8, 0, -car.m.fuelCap.side * (car.halfW + 0.75))).setY(0), () => { c.state = 'waitCar'; });
           c.phase = 'atPump';
         }
         break;
@@ -492,7 +518,7 @@ export class CustomerManager {
     const g = this.game, s = c.service;
     g.labels.remove(c.labelId);
     if (s.wrongFuel) {
-      c.phase = 'drivingOff';
+      c.phase = 'wrongFuel'; // driveOff() runs after the backfire show
       this.wrongFuelDrama(c);
       return;
     }
@@ -517,7 +543,7 @@ export class CustomerManager {
     c.phase = 'toCar';
     const go = () => {
       if (c.inCar) { this.driveOff(c); return; }
-      const door = car.worldPoint(car.m.doorLocal, new THREE.Vector3()); door.y = 0;
+      const door = c.doorPoint(new THREE.Vector3());
       c.walkTo(door, () => { c.enterCar(); g.after(0.6, () => this.driveOff(c)); });
       c.resumeFn = go;
     };
@@ -526,7 +552,7 @@ export class CustomerManager {
 
   driveOff(c) {
     const g = this.game, T = g.traffic, car = c.car;
-    if (!car || c.phase === 'drivingOff' || c.phase === 'leaving') return;
+    if (!car || c.phase === 'leaving' || c.phase === 'reversing') return;
     if (c.slot && c.slot.island !== undefined) {
       g.fuel.endService(c.service);
       const slot = c.slot;
@@ -548,9 +574,12 @@ export class CustomerManager {
     const g = this.game;
     g.labels.remove(c.labelId);
     c.say('angry', pick(['Forget it!', 'Worst. Service. Ever.', 'I\'m leaving a 1-star review!', 'Ugh!']));
-    g.economy.rep(-0.08, c.pos);
+    g.economy.rep(-0.06, c.pos);
     g.ui.toast(`😡 ${c.name}: ${msg}`, 'bad');
     g.economy.stats.lost++;
+    // put back anything they picked up
+    for (const b of c.basket) if (b.kind === 'product') g.inventory.restockReturned(b.id);
+    c.basket = [];
     if (c.service) { c.service.cancelled = true; g.fuel.endService(c.service); }
     if (c.inCar) this.driveOff(c); else this.returnAndLeave(c, 0.3);
   }
@@ -578,7 +607,7 @@ export class CustomerManager {
       };
       g.after(0.8, pop);
     };
-    if (c.inCar) back(); else c.walkTo(car.worldPoint(car.m.doorLocal).setY(0), back);
+    if (c.inCar) back(); else c.walkTo(c.doorPoint(new THREE.Vector3()), back);
   }
 
   // ------------------------------------------------------------- shopping
@@ -728,10 +757,7 @@ export class CustomerManager {
           this.goShopping(c, () => this.returnAndLeave(c, 0.3));
         }
       }
-      if (c.state === 'queue' || c.state === 'browse' || c.state === 'idle') {
-        if (c.state === 'queue') c.patience -= dt * (g.register.indexOf(c) === 0 && g.register.busy ? 0.4 : 1);
-        if (c.patience <= 0 && c.state === 'queue') { g.register.leave(c); this.angryLeave(c, 'The line was too slow!'); }
-      }
+
     };
     return c;
   }

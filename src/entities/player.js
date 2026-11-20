@@ -5,6 +5,8 @@ import { clamp, lerp, damp, rand } from '../core/utils.js';
 
 const _v = new THREE.Vector3(), _w = new THREE.Vector3();
 const EYE = 1.66;
+/** True when the object and all its parents are visible (hidden objects must not be interactable). */
+function visibleChain(o) { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; }
 
 /**
  * First-person controller: movement with collisions, head-bob, footsteps,
@@ -14,7 +16,7 @@ export class Player {
   constructor(game) {
     this.game = game;
     this.input = game.input;
-    this.camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 3000);
+    this.camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 3000);
     game.scene.add(this.camera);
     this.pos = new THREE.Vector3(-3, 0, -24.5);
     this.vel = new THREE.Vector3();
@@ -220,7 +222,7 @@ export class Player {
     let it = null, hitObj = null;
     for (const h of hits) {
       const u = h.object.userData.interact;
-      if (!u) continue;
+      if (!u || !visibleChain(h.object)) continue;
       if (u.kind === 'prop' && u.prop.held) continue;
       if (u.kind === 'nozzle' && u.nozzle.state === 'held') continue;
       it = u; hitObj = h; break;

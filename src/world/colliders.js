@@ -34,7 +34,12 @@ export class Colliders {
     }
   }
 
-  addPlatform(minX, maxX, minZ, maxZ, h) { this.platforms.push({ minX, maxX, minZ, maxZ, h }); }
+  addPlatform(minX, maxX, minZ, maxZ, h) {
+    this.platforms.push({ minX, maxX, minZ, maxZ, h });
+    // raised floors (shop, sidewalk, islands, curbs) also exist in the physics world,
+    // otherwise dropped boxes and ragdolls sink to y=0 under the floor
+    if (this.physics) this.physics.addStaticBox((minX + maxX) / 2, h / 2, (minZ + maxZ) / 2, (maxX - minX) / 2, h / 2, (maxZ - minZ) / 2, 0);
+  }
 
   groundHeight(x, z) {
     let h = 0, onPlatform = false;

@@ -229,19 +229,38 @@ button { font-family: var(--font); cursor: pointer; }
 @keyframes pulse { 50% { transform: scale(1.04); } }
 
 /* ================= TOUCH ================= */
-.touch { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
-.joy { position: absolute; left: 4vw; bottom: 6vh; width: 140px; height: 140px; border-radius: 50%; background: rgba(255,255,255,.08); border: 2px solid rgba(255,255,255,.2); pointer-events: auto; }
-.joy-knob { position: absolute; left: 50%; top: 50%; width: 60px; height: 60px; margin: -30px; border-radius: 50%; background: rgba(255,255,255,.35); }
-.touch-buttons { position: absolute; right: 3vw; bottom: 5vh; width: 230px; height: 230px; pointer-events: none; }
-.tbtn { position: absolute; pointer-events: auto; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); background: rgba(20,20,26,.55); color: #fff; font-weight: 800; font-size: 16px; backdrop-filter: blur(4px); }
-.tbtn:active, .tbtn.on { background: rgba(255,181,46,.6); }
-.tbtn-use { width: 86px; height: 86px; right: 0; bottom: 0; font-size: 18px; }
-.tbtn-e { width: 66px; height: 66px; right: 100px; bottom: 6px; font-size: 22px; }
-.tbtn-jump { width: 58px; height: 58px; right: 8px; bottom: 100px; }
-.tbtn-shove { width: 54px; height: 54px; right: 90px; bottom: 86px; }
-.tbtn-throw { width: 50px; height: 50px; right: 160px; bottom: 80px; }
-.tbtn-tab { position: fixed; width: 50px; height: 50px; right: 3vw; top: 90px; border-radius: 14px; }
-.tbtn-pause { position: fixed; width: 44px; height: 44px; right: calc(3vw + 60px); top: 93px; border-radius: 12px; font-size: 12px; }
+/* container for on-screen controls (note: never reuse this class name on <body>) */
+.touch-ui { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
+.joy { position: absolute; left: max(18px, calc(env(safe-area-inset-left, 0px) + 12px)); bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 10px)); width: 128px; height: 128px; border-radius: 50%; background: rgba(255,255,255,.07); border: 2px solid rgba(255,255,255,.22); pointer-events: auto; touch-action: none; }
+.joy-knob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px; border-radius: 50%; background: rgba(255,255,255,.38); box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+.touch-buttons { position: absolute; right: max(14px, calc(env(safe-area-inset-right, 0px) + 10px)); bottom: max(14px, calc(env(safe-area-inset-bottom, 0px) + 8px)); width: 220px; height: 190px; pointer-events: none; }
+.tbtn { position: absolute; pointer-events: auto; touch-action: none; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); background: rgba(20,20,26,.58); color: #fff; font-weight: 800; font-size: 16px; line-height: 1; backdrop-filter: blur(4px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 0; -webkit-user-select: none; user-select: none; }
+.tbtn small { font-size: 8px; letter-spacing: .08em; opacity: .85; }
+.tbtn:active, .tbtn.on { background: rgba(255,181,46,.65); color: #1a1300; }
+.tbtn-use { width: 82px; height: 82px; right: 0; bottom: 0; font-size: 17px; border-color: rgba(255,181,46,.7); }
+.tbtn-e { width: 64px; height: 64px; right: 94px; bottom: 4px; font-size: 22px; }
+.tbtn-jump { width: 54px; height: 54px; right: 6px; bottom: 96px; }
+.tbtn-shove { width: 52px; height: 52px; right: 76px; bottom: 84px; }
+.tbtn-throw { width: 50px; height: 50px; right: 150px; bottom: 78px; }
+.tbtn-tab, .tbtn-pause { position: fixed; top: max(74px, calc(env(safe-area-inset-top, 0px) + 66px)); width: 48px; height: 48px; border-radius: 14px; }
+.tbtn-tab { right: max(16px, calc(env(safe-area-inset-right, 0px) + 10px)); }
+.tbtn-pause { right: max(72px, calc(env(safe-area-inset-right, 0px) + 66px)); font-size: 13px; }
+.touch-help { display: none; }
+
+/* phone layout tweaks */
+.is-touch .hold-info { display: none; }
+.is-touch .fuel-gauge { bottom: max(10px, env(safe-area-inset-bottom, 0px)); width: min(380px, 44vw); padding: 8px 12px; }
+.is-touch .fuel-gauge .fg-hint { display: none; }
+.is-touch .toasts { top: 8px; right: auto; left: 50%; transform: translateX(-50%); align-items: center; width: min(420px, 46vw); }
+.is-touch .toast { text-align: center; }
+.is-touch .controls-help { display: none; }
+.is-touch .touch-help { display: block; font-size: 12px; color: var(--muted); line-height: 1.7; text-align: center; }
+.is-touch .touch-help b { color: var(--text); }
+.is-touch .crosshair-hint { display: none; }
+/* at the register the till fills the screen: keep only the E (exit) button */
+.register-mode .joy, .register-mode .tbtn-use, .register-mode .tbtn-jump, .register-mode .tbtn-shove, .register-mode .tbtn-throw, .register-mode .tbtn-tab, .register-mode .tbtn-pause { display: none; }
+.register-mode .tbtn-e { right: 0; bottom: 0; }
+.pause-panel, .summary-panel { max-height: calc(100% - 24px); overflow-y: auto; }
 
 @media (max-width: 720px), (max-height: 500px) {
   .money-pill { font-size: 22px; }
@@ -253,8 +272,35 @@ button { font-family: var(--font); cursor: pointer; }
   .objectives { top: 92px; max-width: 220px; }
   .obj { font-size: 11px; }
   .toasts { top: 74px; }
-  .toast { font-size: 12px; }
+  .toast { font-size: 12px; padding: 6px 10px; }
   .tank-levels { display: none; }
+  .hud-top-left { top: 8px; left: max(10px, env(safe-area-inset-left, 0px)); gap: 5px; }
+  .hud-top-right { top: 8px; right: max(10px, env(safe-area-inset-right, 0px)); }
+  .money-pill { padding: 3px 10px 3px 5px; }
+  .clock-pill { padding: 3px 10px; }
+  .hud-bars { padding: 6px 9px; }
+  .objectives { top: 78px; left: max(10px, env(safe-area-inset-left, 0px)); }
+  .obj { padding: 5px 9px; }
+  .prompt { font-size: 12px; padding: 6px 10px; top: calc(50% + 24px); max-width: 70vw; white-space: normal; }
+  .big-msg { top: 18%; }
+  .summary-title { font-size: 32px; }
+  .summary-grid { font-size: 13px; margin: 8px 0; }
+  .panel { padding: 16px 18px; }
+  .tablet-frame { border-width: 6px; border-radius: 18px; }
+  .tablet-head { padding: 8px 12px; }
+  .tablet-title { font-size: 18px; }
+  .tablet-title span { display: none; }
+  .tablet-body { padding: 10px 12px 18px; }
+  .cards { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+}
+@media (max-width: 520px) {
+  .hud-bars .xp-bar { width: 80px; }
+  .rep-row { font-size: 12px; gap: 6px; }
+  .objectives { max-width: 62vw; }
+  .is-touch .toasts { top: auto; bottom: 300px; width: 86vw; }
+  .is-touch .fuel-gauge { width: 72vw; bottom: 218px; }
+  .is-touch .objectives { max-width: 58vw; }
+  .is-touch .obj { font-size: 10.5px; }
 }
 
 .credits { font-size: 10px; color: #6f6a62; text-align: center; line-height: 1.5; }

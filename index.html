@@ -90,6 +90,11 @@
           <label>Field of view <input type="range" id="set-fov" min="60" max="95" step="1" value="72"></label>
           <label class="check"><input type="checkbox" id="set-invert"> Invert mouse Y</label>
         </div>
+        <div class="touch-help">
+          <div><b>Left stick</b> move • <b>drag the screen</b> to look around</div>
+          <div><b>E</b> interact / pick up • <b>USE</b> insert nozzle, pump, stock shelves</div>
+          <div><b>PUSH</b> shove • <b>THROW</b> throw what you hold • <b>SHOP</b> station tablet</div>
+        </div>
         <div class="controls-help">
           <div><b>WASD</b> move • <b>SHIFT</b> sprint • <b>SPACE</b> jump</div>
           <div><b>E</b> interact / pick up • <b>LMB</b> use / pump / place • <b>RMB</b> throw</div>
@@ -109,17 +114,17 @@
     </div>
 
     <!-- ================= TOUCH CONTROLS ================= -->
-    <div id="touch" class="touch hidden">
+    <div id="touch" class="touch-ui hidden">
       <div class="joy" id="joy"><div class="joy-knob" id="joy-knob"></div></div>
       <div class="touch-buttons">
-        <button class="tbtn tbtn-use" id="t-use">USE</button>
-        <button class="tbtn tbtn-e" id="t-e">E</button>
-        <button class="tbtn tbtn-jump" id="t-jump">⤒</button>
-        <button class="tbtn tbtn-shove" id="t-shove">✋</button>
-        <button class="tbtn tbtn-throw" id="t-throw">⤴</button>
-        <button class="tbtn tbtn-tab" id="t-tab">▦</button>
-        <button class="tbtn tbtn-pause" id="t-pause">❚❚</button>
+        <button class="tbtn tbtn-use" id="t-use" aria-label="Use">USE</button>
+        <button class="tbtn tbtn-e" id="t-e" aria-label="Interact">E</button>
+        <button class="tbtn tbtn-jump" id="t-jump" aria-label="Jump">⤒<small>JUMP</small></button>
+        <button class="tbtn tbtn-shove" id="t-shove" aria-label="Shove">✋<small>PUSH</small></button>
+        <button class="tbtn tbtn-throw" id="t-throw" aria-label="Throw">⤴<small>THROW</small></button>
       </div>
+      <button class="tbtn tbtn-tab" id="t-tab" aria-label="Station tablet">▦<small>SHOP</small></button>
+      <button class="tbtn tbtn-pause" id="t-pause" aria-label="Pause">❚❚</button>
     </div>
 
     <!-- ================= LOADING ================= -->

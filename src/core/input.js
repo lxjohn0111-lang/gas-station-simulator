@@ -62,11 +62,23 @@ export class Input {
 
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === this.canvas;
+      if (this.locked) { this._everLocked = true; this._lockFails = 0; this.freeLook = false; }
       if (this.onLockChange) this.onLockChange(this.locked);
     });
-    document.addEventListener('pointerlockerror', () => { this.locked = false; this.freeLook = true; if (this.onLockChange) this.onLockChange(false, true); });
+    // A lock error right after Esc (browser cooldown) is normal: just ask for another click.
+    // Only fall back to free-look when the embed never grants pointer lock at all.
+    document.addEventListener('pointerlockerror', () => this._lockFailed());
 
     if (this.isTouch) this._bindTouch();
+  }
+
+  _lockFailed() {
+    this.locked = false;
+    this._lockFails = (this._lockFails || 0) + 1;
+    if (!this._everLocked && this._lockFails >= 2) {
+      this.freeLook = true;
+      if (this.onLockChange) this.onLockChange(false, true);
+    } else if (this.onLockError) this.onLockError();
   }
 
   _setPointer(x, y) {
@@ -79,7 +91,7 @@ export class Input {
     if (this.isTouch) return;
     // If the page is embedded somewhere that refuses pointer lock, fall back to
     // "free look" (raw mouse movement while the cursor is over the game).
-    const fail = () => { this.freeLook = true; if (this.onLockChange) this.onLockChange(false, true); };
+    const fail = () => this._lockFailed();
     if (!this.canvas.requestPointerLock) { fail(); return; }
     const plain = () => { try { const p2 = this.canvas.requestPointerLock(); if (p2 && p2.catch) p2.catch(fail); } catch (e) { fail(); } };
     try {
@@ -128,7 +140,7 @@ export class Input {
       e.preventDefault();
       for (const t of e.changedTouches) {
         const l = looks.get(t.identifier); if (!l) continue;
-        if (!this.cursorMode) { this.lookX += (t.clientX - l.x) * 2.2; this.lookY += (t.clientY - l.y) * 2.2; }
+        if (!this.cursorMode) { this.lookX += (t.clientX - l.x) * 3.0; this.lookY += (t.clientY - l.y) * 2.6; }
         l.x = t.clientX; l.y = t.clientY;
       }
     }, { passive: false });

@@ -43,24 +43,24 @@ export function buildShopInterior(station) {
   const floor = new THREE.Mesh(planeGeo(S.maxX - S.minX, S.maxZ - S.minZ, 2.4), M.tiles);
   floor.position.set(0, FY, (S.minZ + S.maxZ) / 2); floor.receiveShadow = true; g.add(floor);
   // floor slab side faces
-  station.box(S.maxX - S.minX, FY, S.maxZ - S.minZ, M.sidewalk, 0, FY / 2, (S.minZ + S.maxZ) / 2, { cast: false, tile: 4 });
+  station.box(S.maxX - S.minX - 0.02, FY - 0.03, S.maxZ - S.minZ - 0.02, M.sidewalk, 0, (FY - 0.03) / 2, (S.minZ + S.maxZ) / 2, { cast: false, tile: 4 });
   const ceilY = FY + 3.55;
   const ceil = new THREE.Mesh(planeGeo(S.maxX - S.minX, S.maxZ - S.minZ, 1.2), M.ceiling);
   ceil.rotation.x = Math.PI; ceil.position.set(0, ceilY, (S.minZ + S.maxZ) / 2); g.add(ceil);
   // interior wall finish panels (accent lower band)
   const wallIn = [
-    [S.maxX - S.minX - 0.02, 0, S.maxZ - 0.01, Math.PI],
-    [S.maxZ - S.minZ, S.maxX - 0.01, (S.minZ + S.maxZ) / 2, -Math.PI / 2],
+    [S.maxX - S.minX - 0.02, 0, S.maxZ - 0.02, Math.PI],
+    [S.maxZ - S.minZ - 0.04, S.maxX - 0.02, (S.minZ + S.maxZ) / 2, -Math.PI / 2],
   ];
   for (const [len, x, z, r] of wallIn) {
     const p = new THREE.Mesh(new THREE.PlaneGeometry(len, ceilY - FY), M.interiorWall); p.position.set(x, (ceilY + FY) / 2, z); p.rotation.y = r; p.receiveShadow = true; g.add(p);
-    const a = new THREE.Mesh(new THREE.PlaneGeometry(len, 1.0), M.interiorWallAccent); a.position.set(x + (r === Math.PI ? 0 : -0.005), FY + 0.5, z + (r === Math.PI ? -0.005 : 0)); a.rotation.y = r; g.add(a);
+    const a = new THREE.Mesh(new THREE.PlaneGeometry(len, 1.0), M.interiorWallAccent); a.position.set(x + (r === Math.PI ? 0 : -0.018), FY + 0.5, z + (r === Math.PI ? -0.018 : 0)); a.rotation.y = r; g.add(a);
   }
   // west interior wall (two pieces around side door)
   const sd = LAYOUT.sideDoor;
   for (const [za, zb] of [[S.minZ, sd.z - sd.width / 2], [sd.z + sd.width / 2, S.maxZ]]) {
     const p = new THREE.Mesh(new THREE.PlaneGeometry(zb - za, ceilY - FY), M.interiorWall);
-    p.position.set(S.minX + 0.01, (ceilY + FY) / 2, (za + zb) / 2); p.rotation.y = Math.PI / 2; p.receiveShadow = true; g.add(p);
+    p.position.set(S.minX + 0.02, (ceilY + FY) / 2, (za + zb) / 2); p.rotation.y = Math.PI / 2; p.receiveShadow = true; g.add(p);
   }
   // ceiling light panels
   const lightMat = station.nightMat(new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff8ee, emissiveIntensity: 2.4, roughness: 0.3 }), 2.6);

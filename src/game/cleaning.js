@@ -40,7 +40,7 @@ export class Cleaning {
       mesh = new THREE.Mesh(planeGeo(s, s, 0), kind === 'oil' ? g.mats.oil : this.sodaMat);
       mesh.rotation.y = rand(0, 6);
     }
-    mesh.position.copy(pos); mesh.position.y = g.colliders.groundHeight(pos.x, pos.z) + 0.022 + this.hazards.length * 0.0003;
+    mesh.position.copy(pos); mesh.position.y = g.colliders.groundHeight(pos.x, pos.z) + 0.04 + this.hazards.length * 0.0004;
     g.scene.add(mesh);
     const h = { kind, pos: mesh.position.clone(), radius: kind === 'banana' ? 0.35 : (size || 1.2) * 0.42, mesh, grow: kind === 'oil' ? 0.2 : 0 };
     if (kind !== 'banana') mesh.scale.setScalar(0.3);

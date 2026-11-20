@@ -115,7 +115,7 @@ export class Register {
   }
 
   // ------------------------------------------------------------ queue
-  join(c) { if (!this.queue.includes(c)) this.queue.push(c); }
+  join(c) { if (!this.queue.includes(c)) { this.queue.push(c); c.patience = Math.max(c.patience, c.patienceMax * 1.2); } }
   indexOf(c) { return this.queue.indexOf(c); }
   leave(c) {
     const i = this.queue.indexOf(c);
