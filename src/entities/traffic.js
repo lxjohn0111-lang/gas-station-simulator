@@ -108,7 +108,8 @@ export class CarAgent {
     const check = (p, rad, dirDot = null) => {
       _v.subVectors(p, this.pos); _v.y = 0;
       const f = _v.dot(fwd);
-      if (f <= 0 || f > look + this.halfL) return;
+      // only things ahead of the front half count (someone standing beside the car doesn't block it)
+      if (f <= this.halfL * 0.5 || f > look + this.halfL) return;
       const lat = Math.abs(_v.x * fwd.z - _v.z * fwd.x);
       if (lat > this.halfW + rad + 0.25) return;
       if (dirDot !== null && dirDot < -0.3) return; // oncoming
