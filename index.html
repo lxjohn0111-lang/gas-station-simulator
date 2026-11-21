@@ -29,7 +29,20 @@
           <div class="rep-row"><span class="stars" id="hud-stars"></span><span class="hype" id="hud-hype" title="Hype: funny moments make your station go viral">🔥 0</span></div>
         </div>
       </div>
-      <div id="objectives" class="objectives"></div>
+      <div id="goal" class="goal hidden">
+        <div class="goal-head"><span>🎯 NEXT GOAL</span><span id="goal-num"></span></div>
+        <div class="goal-main"><span class="goal-icon" id="goal-icon"></span><span class="goal-text" id="goal-text"></span></div>
+        <div class="goal-bar"><div class="goal-fill" id="goal-fill"></div></div>
+        <div class="goal-foot"><span id="goal-prog"></span><span class="goal-reward" id="goal-reward"></span></div>
+      </div>
+      <div id="guide" class="guide hidden">
+        <div class="guide-card">
+          <div class="guide-top"><span id="guide-step">TUTORIAL</span><button class="guide-skip" id="guide-skip">Skip tutorial ✕</button></div>
+          <div class="guide-title" id="guide-title"></div>
+          <div class="guide-text" id="guide-text"></div>
+        </div>
+      </div>
+      <div id="guide-edge" class="guide-edge hidden"><div class="ge-arrow">➤</div><div class="ge-dist" id="ge-dist"></div></div>
       <div id="crosshair"><div class="dot"></div><div class="ring"></div></div>
       <div id="prompt" class="prompt hidden"></div>
       <div id="hold-info" class="hold-info hidden"></div>
@@ -37,7 +50,7 @@
         <div class="fg-title"><span id="fg-type">REGULAR</span><span id="fg-target">TARGET 30.0 L</span></div>
         <div class="fg-bar"><div class="fg-fill" id="fg-fill"></div><div class="fg-mark" id="fg-mark"></div></div>
         <div class="fg-read"><span id="fg-liters">0.00 L</span><span id="fg-cost">$0.00</span></div>
-        <div class="fg-hint">Hold <b>LMB</b> to pump • release on target</div>
+        <div class="fg-hint">Hold <b class="k-lmb">LMB</b> anywhere to pump • stops by itself</div>
       </div>
       <div id="toasts" class="toasts"></div>
       <div id="big-msg" class="big-msg"></div>
@@ -47,8 +60,14 @@
 
     <!-- ================= REGISTER OVERLAY ================= -->
     <div id="register-ui" class="register-ui hidden">
-      <div class="reg-help" id="reg-help"></div>
-      <div class="reg-exit">Press <b>E</b> / <b>ESC</b> to leave the register</div>
+      <div class="reg-panel">
+        <div class="reg-head">
+          <div class="reg-title">🧾 CASH REGISTER</div>
+          <div class="reg-cust" id="reg-cust"></div>
+          <button class="reg-close" id="reg-close">✕ Close <small>(E)</small></button>
+        </div>
+        <div class="reg-body" id="reg-body"></div>
+      </div>
     </div>
 
     <!-- ================= TABLET ================= -->
@@ -77,6 +96,25 @@
       </div>
     </div>
 
+    <!-- ================= HIRE (end of tutorial) ================= -->
+    <div id="hire" class="overlay hidden">
+      <div class="panel hire-panel">
+        <div class="hire-title">HIRE YOUR FIRST EMPLOYEE</div>
+        <div class="hire-sub">They work on their own all day. <b>Your first hire is FREE</b> (you only pay their daily wage).</div>
+        <div class="hire-grid" id="hire-grid"></div>
+        <button class="btn small" id="hire-later">Maybe later</button>
+      </div>
+    </div>
+
+    <!-- ================= TUTORIAL DONE ================= -->
+    <div id="final" class="overlay hidden">
+      <div class="panel final-panel">
+        <div class="hire-title">YOU'RE READY, BOSS! 🎉</div>
+        <div class="final-list" id="final-list"></div>
+        <button class="btn btn-primary" id="final-go">OPEN THE STATION ▶</button>
+      </div>
+    </div>
+
     <!-- ================= PAUSE ================= -->
     <div id="pause" class="overlay hidden">
       <div class="panel pause-panel">
@@ -100,7 +138,11 @@
           <div><b>E</b> interact / pick up • <b>LMB</b> use / pump / place • <b>RMB</b> throw</div>
           <div><b>F</b> shove • <b>Q</b> drop • <b>TAB</b> station tablet</div>
         </div>
-        <button class="btn btn-danger small" id="btn-reset">Reset save</button>
+        <div class="pause-row">
+          <button class="btn small" id="btn-skip-tut">Skip tutorial</button>
+          <button class="btn small" id="btn-replay-tut">Replay tutorial</button>
+          <button class="btn btn-danger small" id="btn-reset">Reset save</button>
+        </div>
         <div class="credits">Characters &amp; animations: Adobe Mixamo, Ready Player Me (via three.js examples) • Fox: PixelMannen (CC0), rigging @tomkranis (CC-BY 4.0) • Built with three.js &amp; cannon-es</div>
       </div>
     </div>

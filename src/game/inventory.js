@@ -175,6 +175,7 @@ export class Inventory {
     this.game.audio.play('pop', { pos: s.pos, vol: 0.5, pitch: rand(0.9, 1.2) });
     this.game.economy.addXP(0.5);
     this.game.tutorial.event('restocked');
+    this.game.ui.updateHeld(player.held);
     if (b.count <= 0) { this.game.ui.toast('📦 Box empty! Throw it away (RMB at the dumpster / trash)', 'good', 2.5); h.prop.data.empty = true; }
     player.viewKick(0.4);
     return true;

@@ -62,6 +62,8 @@ export class Input {
 
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === this.canvas;
+      // a lock that was granted after the UI asked for a free cursor (register, tablet, dialogs) is dropped right away
+      if (this.locked && this.cursorMode) { document.exitPointerLock(); return; }
       if (this.locked) { this._everLocked = true; this._lockFails = 0; this.freeLook = false; }
       if (this.onLockChange) this.onLockChange(this.locked);
     });

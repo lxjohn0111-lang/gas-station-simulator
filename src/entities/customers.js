@@ -311,7 +311,7 @@ export class CustomerManager {
 
   update(dt) {
     const g = this.game;
-    if (this.open) {
+    if (this.open && !g.tutorial.active) {
       this.spawnTimer -= dt;
       if (this.spawnTimer <= 0) {
         this.spawnTimer = this.nextInterval();
@@ -373,12 +373,12 @@ export class CustomerManager {
   }
 
   // ------------------------------------------------------------- fuel customer
-  spawnFuel(slot, holdLane = null) {
+  spawnFuel(slot, holdLane = null, opts = {}) {
     const g = this.game, T = g.traffic;
-    const c = new Customer(this, {});
+    const c = new Customer(this, { kind: opts.kind });
     // park with the fuel cap facing the pump island (S lane: island on the right / +Z)
     const lane = slot ? slot.lane : holdLane;
-    const model = this.carModelFor(c, { fuelSide: lane === 'S' ? 1 : -1 });
+    const model = this.carModelFor(c, { fuelSide: lane === 'S' ? 1 : -1, fuelType: opts.fuelType });
     const car = T.addCar(model);
     c.sitInCar(car);
     this.list.push(c);
@@ -395,10 +395,15 @@ export class CustomerManager {
     c.fuelReq = { type: fuelType, liters, dollars: r >= 0.75 ? Math.round(liters * FUELS[fuelType].price) : null, full: r < 0.35 };
     c.payInside = chance(0.45);
     c.wants = c.payInside ? (chance(0.6) ? randInt(1, 3) : 0) : 0;
+    if (opts.liters) c.fuelReq = { type: fuelType, liters: opts.liters, dollars: null, full: false };
+    if (opts.payInside !== undefined) { c.payInside = opts.payInside; c.wants = 0; }
+    if (opts.stayInCar) c.stayInCar = true;
+    if (opts.tutorial) { c.tutorial = true; c.patienceMax = c.patience = 99999; c.traits.thief = false; }
     const startPath = slot ? T.routeToSlot(slot) : T.routeToLaneHold(holdLane);
     if (slot) { slot.reservedBy = c; c.slot = slot; }
     else { T.queue[holdLane] = c; c.holdLane = holdLane; }
     car.setPath(startPath, { maxSpeed: 9 });
+    car.earlyArrive = !!slot;
     car.dist = 0; car.speed = 16;
     car.place(startPath.pointAt(0), 0);
     c.state = 'driving';
@@ -456,6 +461,7 @@ export class CustomerManager {
         if (slot) {
           slot.reservedBy = c; c.slot = slot; T.queue[lane] = null; c.holdLane = null;
           car.setPath(T.routeFromHold(lane, slot), { maxSpeed: 6 });
+          car.earlyArrive = true;
           car.onArrive = () => this.onCarArrived(c);
           c.phase = 'toPump';
           g.labels.remove(c.labelId);
@@ -556,7 +562,7 @@ export class CustomerManager {
     if (c.slot && c.slot.island !== undefined) {
       g.fuel.endService(c.service);
       const slot = c.slot;
-      car.setPath(T.routeSlotExit(slot), { maxSpeed: 9 });
+      car.setPath(T.routeSlotExit(slot, car.pos), { maxSpeed: 9 });
       car.onArrive = () => this.carLeft(c);
       c.phase = 'leaving';
       // free the slot once the car has rolled away
@@ -581,6 +587,7 @@ export class CustomerManager {
     for (const b of c.basket) if (b.kind === 'product') g.inventory.restockReturned(b.id);
     c.basket = [];
     if (c.service) { c.service.cancelled = true; g.fuel.endService(c.service); }
+    if (!c.car) { this.walkAway(c); return; }
     if (c.inCar) this.driveOff(c); else this.returnAndLeave(c, 0.3);
   }
 
@@ -710,6 +717,7 @@ export class CustomerManager {
         g.economy.earn(15, 'Thief bounty', c.pos.clone().setY(1.5));
         g.economy.addXP(25);
         g.economy.stats.thievesCaught++;
+        g.tutorial.event('thiefCaught');
         c.basket = [];
       }
       c.isFleeing = false;
@@ -732,6 +740,31 @@ export class CustomerManager {
     const target = new THREE.Vector3(chance(0.5) ? -46 : 46, 0, rand(-34, -26));
     c.walkTo(target, () => this.remove(c), { run });
     c.resumeFn = () => c.walkTo(target, () => this.remove(c), { run });
+  }
+
+  // ------------------------------------------------------------- scripted walk-ins (tutorial)
+  spawnWalkIn(items, at = SHOP.entranceOutside) {
+    const g = this.game;
+    const c = new Customer(this, {});
+    c.tutorial = true; c.patienceMax = c.patience = 99999; c.traits.thief = false; c.traits.phone = false;
+    c.char.root.position.copy(at); c.char.root.position.y = g.colliders.groundHeight(at.x, at.z);
+    this.list.push(c);
+    c.basket = items.map((id) => ({ kind: 'product', id, price: g.inventory.priceOf(id) }));
+    c.wants = 0; c.phase = 'shopping';
+    this.goShopping(c, () => this.walkAway(c), true);
+    return c;
+  }
+
+  spawnDancer(at) {
+    const g = this.game;
+    const c = new Customer(this, { kind: 'cowboy' });
+    c.tutorial = true; c.patienceMax = c.patience = 99999; c.traits.thief = false;
+    c.char.root.position.copy(at); c.char.root.position.y = g.colliders.groundHeight(at.x, at.z);
+    c.char.root.rotation.y = Math.PI;
+    this.list.push(c);
+    c.phase = 'dancing'; c.state = 'dance';
+    c.resumeFn = () => { c.say('angry', 'Alright, alright, I\'m leaving!'); this.walkAway(c); };
+    return c;
   }
 
   // ------------------------------------------------------------- shopper (parking)

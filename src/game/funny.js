@@ -86,7 +86,7 @@ export class Funny {
         c.slipImmune = 10;
       }
     }
-    if (!g.clock.open) return;
+    if (!g.clock.open || g.tutorial.active) return;
     this.timer -= dt;
     if (this.timer <= 0) {
       this.timer = rand(26, 52);

@@ -28,6 +28,7 @@ export class Deliveries {
     for (const [id, n] of Object.entries(order)) cost += PRODUCTS[id].cost * PRODUCTS[id].box * n;
     if (cost <= 0) return false;
     if (!g.economy.spend(cost, 'Stock order')) return false;
+    if (g.tutorial.active) instant = true;
     if (instant) { this.dropBoxes(order); g.ui.toast('📦 Express delivery dropped at the side door!', 'good'); }
     else {
       const eta = rand(25, 40);

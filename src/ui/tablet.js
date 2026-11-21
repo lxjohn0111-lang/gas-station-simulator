@@ -24,7 +24,9 @@ export class Tablet {
   open(tab = null) {
     const g = this.game;
     if (tab) this.tab = tab;
+    if (this.tutOrder()) this.tab = 'orders';
     this.el.classList.remove('hidden');
+    document.body.classList.add('tablet-open');
     g.ui.tabletOpen = true;
     g.input.cursorMode = true;
     g.input.exitLock();
@@ -36,12 +38,15 @@ export class Tablet {
     const g = this.game;
     if (!this.isOpen) return;
     this.el.classList.add('hidden');
+    document.body.classList.remove('tablet-open');
     g.ui.tabletOpen = false;
     g.input.cursorMode = false;
     document.body.style.cursor = 'none';
     g.input.requestLock(); g.lockHint && g.lockHint();
     g.audio.play('click', { pitch: 0.8 });
   }
+
+  tutOrder() { const t = this.game.tutorial; return !!(t && t.active && t.step && t.step.id === 'order'); }
 
   updateMoney() { $('tab-money').textContent = moneyShort(this.game.economy.money); }
 
@@ -63,7 +68,7 @@ export class Tablet {
   }
 
   renderOrders() {
-    const g = this.game, lvl = g.economy.level;
+    const g = this.game, lvl = g.economy.level, tut = this.tutOrder();
     let total = 0, boxes = 0;
     for (const [id, n] of Object.entries(this.cart)) { total += PRODUCTS[id].cost * PRODUCTS[id].box * n; boxes += n; }
     const cards = Object.entries(PRODUCTS).map(([id, p]) => {
@@ -71,11 +76,12 @@ export class Tablet {
       const n = this.cart[id] || 0;
       const shelf = g.inventory.totalStock(id), inBox = g.inventory.boxStock(id);
       const where = p.shelf === 'cold' ? 'Fridge' : p.shelf === 'auto' ? 'Auto wall' : 'Snack aisle';
-      return `<div class="card ${locked ? 'locked' : ''}">
+      const hl = tut && id === 'cola';
+      return `<div class="card ${locked ? 'locked' : ''} ${hl ? 'tut-hl' : ''}">
         <div class="c-icon">${p.icon}</div><div class="c-name">${p.name}</div>
         <div class="c-desc">${where} • ${p.box} per box<br>Cost ${money(p.cost)} → sells ${money(g.inventory.prices[id])}</div>
         <div class="c-row"><span>On shelf <span class="c-stock">${shelf}</span>${inBox ? ` (+${inBox} boxed)` : ''}</span><span>${money(p.cost * p.box)}/box</span></div>
-        ${locked ? `<div class="c-row">🔒 Level ${p.level}</div>` : `<div class="qty"><button class="btn small btn-ghost" data-act="dec" data-id="${id}">−</button><b style="min-width:22px;text-align:center">${n}</b><button class="btn small btn-ghost" data-act="inc" data-id="${id}">+</button></div>`}
+        ${locked ? `<div class="c-row">🔒 Level ${p.level}</div>` : `<div class="qty"><button class="btn small btn-ghost" data-act="dec" data-id="${id}">−</button><b style="min-width:22px;text-align:center">${n}</b><button class="btn small btn-ghost ${hl && !n ? 'tut-hl' : ''}" data-act="inc" data-id="${id}">+</button></div>`}
       </div>`;
     }).join('');
     const pend = g.deliveries.pending.filter((o) => o.kind === 'box').length + g.deliveries.trucks.filter((t) => t.order.kind === 'box').length;
@@ -85,8 +91,8 @@ export class Tablet {
       <div class="cards">${cards}</div>
       <div style="position:sticky;bottom:-24px;background:#0d0f14;padding:14px 0 4px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <b style="font-size:16px">Cart: ${boxes} box(es) — ${money(total)}</b>
-        <button class="btn" data-act="order" ${boxes ? '' : 'disabled'}>🚚 ORDER (truck ~30s)</button>
-        <button class="btn btn-reward" data-act="orderAd" ${boxes ? '' : 'disabled'}>▶ Watch ad: INSTANT delivery</button>
+        <button class="btn ${tut && boxes ? 'tut-hl' : ''}" data-act="order" ${boxes ? '' : 'disabled'}>🚚 ORDER ${tut ? '(instant in the tutorial)' : '(truck ~30s)'}</button>
+        ${tut ? '' : `<button class="btn btn-reward" data-act="orderAd" ${boxes ? '' : 'disabled'}>▶ Watch ad: INSTANT delivery</button>`}
         <button class="btn small btn-ghost" data-act="autofill">Auto-fill empty shelves</button>
       </div>`;
   }

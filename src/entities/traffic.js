@@ -82,7 +82,7 @@ export class CarAgent {
   setPath(path, { reverse = false, startDist = 0, hold = null, maxSpeed = null } = {}) {
     this.path = path; this.dist = startDist; this.reverse = reverse; this.holdAt = hold;
     if (maxSpeed) this.maxSpeed = maxSpeed; else this.maxSpeed = path.speed;
-    this.arrived = false;
+    this.arrived = false; this.earlyArrive = false; this.playerBlockT = 0;
     this.setParked(false);
   }
 
@@ -104,8 +104,8 @@ export class CarAgent {
     const fwd = this.forward(_f);
     if (this.reverse) fwd.negate();
     const look = 5 + this.speed * 1.6;
-    let free = Infinity;
-    const check = (p, rad, dirDot = null) => {
+    let free = Infinity, blocker = null;
+    const check = (p, rad, dirDot = null, tag = null) => {
       _v.subVectors(p, this.pos); _v.y = 0;
       const f = _v.dot(fwd);
       // only things ahead of the front half count (someone standing beside the car doesn't block it)
@@ -113,7 +113,8 @@ export class CarAgent {
       const lat = Math.abs(_v.x * fwd.z - _v.z * fwd.x);
       if (lat > this.halfW + rad + 0.25) return;
       if (dirDot !== null && dirDot < -0.3) return; // oncoming
-      free = Math.min(free, f - this.halfL - rad);
+      const v = f - this.halfL - rad;
+      if (v < free) { free = v; blocker = tag; }
     };
     for (const o of this.traffic.cars) {
       if (o === this || !o.alive) continue;
@@ -126,8 +127,9 @@ export class CarAgent {
         if (c.inCar || !c.char) continue;
         check(c.char.root.position, 0.4);
       }
-      check(this.game.player.pos, 0.4);
+      check(this.game.player.pos, 0.4, null, 'player');
     }
+    this.blockedByPlayer = blocker === 'player';
     return free;
   }
 
@@ -153,6 +155,12 @@ export class CarAgent {
       if (free < stopGap + 0.3) target = 0;
     }
     if (this.stunned > 0) { this.stunned -= dt; target = 0; }
+    if (this.arrived) target = 0;
+    // the player is standing where we want to park: just stop here (pumps reach a few metres)
+    if (this.earlyArrive && !this.arrived && target === 0 && this.blockedByPlayer && remaining < 5 && this.speed < 0.4) {
+      this.playerBlockT += dt;
+      if (this.playerBlockT > 0.6) { this.arrived = true; this.speed = 0; if (this.onArrive) this.onArrive(this); }
+    } else this.playerBlockT = 0;
     const accel = target > this.speed ? 2.6 : 7.5;
     const prev = this.speed;
     this.speed += clamp(target - this.speed, -accel * dt, accel * dt);
@@ -293,8 +301,9 @@ export class Traffic {
     return new Path(pts, { speed: 9 });
   }
   routeFromHold(lane, slot) { return new Path([[-21.5, slot.z], [-17, slot.z], [slot.x - 2, slot.z], [slot.x, slot.z]], { speed: 6 }); }
-  routeSlotExit(slot) {
-    return new Path([[slot.x, slot.z], [slot.x + 4, slot.z], [20, slot.z], [27, slot.z + (slot.z < -17 ? -1 : 1) * 0.5], [32, -21], ...this.exitTail], { speed: 9 });
+  routeSlotExit(slot, from = null) {
+    const x0 = from ? Math.min(from.x, slot.x + 2) : slot.x;
+    return new Path([[x0, slot.z], [slot.x + 4, slot.z], [20, slot.z], [27, slot.z + (slot.z < -17 ? -1 : 1) * 0.5], [32, -21], ...this.exitTail], { speed: 9 });
   }
   routeToParking(spot) {
     const x = spot.x;

@@ -227,30 +227,16 @@ export class Player {
       if (u.kind === 'nozzle' && u.nozzle.state === 'held') continue;
       it = u; hitObj = h; break;
     }
-    // special: when holding a nozzle, look for fuel caps with a looser cone (they are small)
-    if (this.held && this.held.kind === 'nozzle' && (!it || it.kind !== 'fuelcap')) {
-      const f = this.forward(_v);
-      let best = null, bd = 0.9;
-      for (const s of g.fuel.services) {
-        if (!s.capHit || s.nozzle || s.state === 'done') continue;
-        const cp = s.capHit.getWorldPosition(_w);
-        const d = cp.distanceTo(this.eye);
-        if (d > 2.8) continue;
-        const dot = cp.clone().sub(this.eye).normalize().dot(f);
-        if (dot > bd) { bd = dot; best = s; }
-      }
-      if (best && bd > 0.93) it = best.capHit.userData.interact;
+    // Fuelling needs no aiming:
+    //  - holding a nozzle near a waiting car -> LMB puts it in (unless you aim at a pump to hang it up)
+    //  - a nozzle is in a car near you -> hold LMB anywhere to pump
+    if (this.held && this.held.kind === 'nozzle' && !(it && it.kind === 'nozzle')) {
+      const s = g.fuel.nearestWaitingService(this.pos, 3.8);
+      if (s) it = s.capHit.userData.interact;
     }
-    // forgiving targeting for nozzles sitting in cars (small meshes)
-    if (!it && !this.held) {
-      const f = this.forward(_v);
-      for (const s of g.fuel.services) {
-        if (!s.nozzle || s.nozzle.state !== 'inCar') continue;
-        const np = s.nozzle.group.position;
-        const d = np.distanceTo(this.eye);
-        if (d > 3.2) continue;
-        if (np.clone().sub(this.eye).normalize().dot(f) > 0.9) { it = s.nozzle.group.children[0].userData.interact; break; }
-      }
+    if (!this.held && !(it && (it.kind === 'slot' || it.kind === 'register' || it.kind === 'hazard'))) {
+      const n = g.fuel.nearbyFuelingNozzle(this.pos, 6);
+      if (n) it = n.group.children[0].userData.interact;
     }
     this.target = it;
     const prompt = it ? it.system.prompt(it, this) : null;
@@ -265,6 +251,8 @@ export class Player {
     if (inp.mousePressed(0)) {
       this.useHoldT = 0;
       if (it) it.system.interact(it, this, 'useStart');
+    } else if (inp.mouseDown(0) && it && it.kind === 'nozzle' && it.nozzle.state === 'inCar' && !g.fuel.pumpRequest) {
+      it.system.interact(it, this, 'useStart');
     } else if (inp.mouseDown(0) && it && it.kind === 'slot') {
       this.useHoldT += dt;
       if (this.useHoldT > 0.16) { this.useHoldT = 0; it.system.interact(it, this, 'useHold'); }
@@ -311,7 +299,8 @@ export class Player {
       const imp = f.clone().multiplyScalar(110).setY(45);
       best.knock(f.clone().multiplyScalar(4.5).setY(2.2), imp, 'shove', 'torso');
       if (best.isFleeing) { g.ui.toast('👮 Tackled the shoplifter!', 'good'); }
-      else { g.economy.rep(-0.04, best.pos); best.setMood(-0.4); }
+      else if (!best.tutorial) { g.economy.rep(-0.04, best.pos); best.setMood(-0.4); }
+      g.tutorial.event('shove', best);
       return;
     }
     if (g.animals.scare(this.pos)) { g.ui.toast('🦊 Shoo!', 'good', 1.5); return; }

@@ -18,15 +18,15 @@ export const UPGRADES = [
   { id: 'neon', cat: 'Marketing', icon: '✨', name: 'Neon Sign Restoration', cost: 700, level: 3, desc: 'Fix the flickering FOOD MART sign. +0.3★ and +30% customers at night.' },
   { id: 'camera', cat: 'Shop', icon: '📹', name: 'Security Cameras', cost: 800, level: 3, desc: 'Shoplifters think twice. Thief chance drops by 60%.' },
   { id: 'coffee', cat: 'Shop', icon: '☕', name: 'Coffee Machine', cost: 600, level: 2, desc: 'Customers grab a coffee ($2.49) at the register. Pure margin.' },
-  { id: 'janitor', cat: 'Staff', icon: '🧹', name: 'Hire Janitor (Earl)', cost: 900, level: 4, wage: 45, desc: 'Cleans spills and litter automatically. $45/day.' },
+  { id: 'janitor', cat: 'Staff', icon: '🧹', name: 'Hire Janitor (Earl)', cost: 400, level: 1, wage: 40, desc: 'Mops spills and picks up litter automatically. $40/day.' },
   { id: 'hotdog', cat: 'Shop', icon: '🌭', name: 'Hot Dog Roller', cost: 1100, level: 4, desc: 'Customers add a hot dog ($3.49). Smells amazing. Probably.' },
   { id: 'island3', cat: 'Station', icon: '⛽', name: 'Repair Pump Island 3', cost: 2600, level: 4, desc: 'Fix the west island. +2 more fuelling spots.' },
   { id: 'bigtanks', cat: 'Station', icon: '🛢️', name: 'Bigger Fuel Tanks', cost: 1600, level: 5, desc: 'Underground tank capacity 3,000 L → 6,000 L.' },
-  { id: 'cashier', cat: 'Staff', icon: '🧑‍💼', name: 'Hire Cashier (Rosa)', cost: 1500, level: 5, wage: 70, desc: 'Rings up customers when you\'re not at the register. $70/day.' },
-  { id: 'stocker', cat: 'Staff', icon: '📦', name: 'Hire Stock Clerk (Gus)', cost: 1800, level: 6, wage: 55, desc: 'Puts delivered boxes on the shelves automatically. $55/day.' },
+  { id: 'cashier', cat: 'Staff', icon: '🧑‍💼', name: 'Hire Cashier (Rosa)', cost: 700, level: 1, wage: 60, desc: 'Rings up customers when you\'re not at the register. $60/day.' },
+  { id: 'stocker', cat: 'Staff', icon: '📦', name: 'Hire Stock Clerk (Gus)', cost: 500, level: 1, wage: 45, desc: 'Puts delivered boxes on the shelves automatically. $45/day.' },
   { id: 'carwash', cat: 'Station', icon: '🫧', name: 'Splash-O-Matic Car Wash', cost: 5200, level: 6, desc: 'Automatic car wash next to the shop. $8 per wash, fully passive.' },
-  { id: 'autostop', cat: 'Station', icon: '🎯', name: 'Smart Auto-Stop Nozzles', cost: 2400, level: 7, desc: 'One click and the pump stops exactly on target. Perfect every time.' },
-  { id: 'attendant', cat: 'Staff', icon: '⛑️', name: 'Hire Pump Attendant (Dale)', cost: 3000, level: 8, wage: 90, desc: 'Serves waiting cars at the pumps on his own (slowly). $90/day.' },
+  { id: 'autostop', cat: 'Station', icon: '🎯', name: 'Auto-Fill Nozzles', cost: 2400, level: 7, desc: 'Click once and the nozzle fills the car by itself while you do other jobs.' },
+  { id: 'attendant', cat: 'Staff', icon: '⛑️', name: 'Hire Pump Attendant (Dale)', cost: 900, level: 1, wage: 75, desc: 'Fuels waiting cars at the pumps on his own (a bit slowly). $75/day.' },
 ];
 
 export class Upgrades {
@@ -51,6 +51,19 @@ export class Upgrades {
     g.audio.play('unlock');
     g.ui.bigMessage(u.icon + ' ' + u.name.toUpperCase(), 'Upgrade installed!');
     g.economy.addXP(Math.round(u.cost / 25));
+    g.tutorial.event('upgradeBought', id);
+    g.save();
+    return true;
+  }
+
+  /** Free unlock (tutorial's first hire). */
+  grant(id) {
+    const g = this.game, u = this.get(id);
+    if (!u || this.has(id)) return false;
+    this.owned.add(id);
+    this.apply(id, true);
+    g.audio.play('unlock');
+    g.tutorial.event('upgradeBought', id);
     g.save();
     return true;
   }

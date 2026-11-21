@@ -115,7 +115,7 @@ export class Register {
   }
 
   // ------------------------------------------------------------ queue
-  join(c) { if (!this.queue.includes(c)) { this.queue.push(c); c.patience = Math.max(c.patience, c.patienceMax * 1.2); } }
+  join(c) { if (!this.queue.includes(c)) { this.queue.push(c); c.patience = Math.max(c.patience, c.patienceMax * 1.2); if (this.active) this.updateHelp(); } }
   indexOf(c) { return this.queue.indexOf(c); }
   leave(c) {
     const i = this.queue.indexOf(c);
@@ -184,6 +184,8 @@ export class Register {
   enter() {
     const g = this.game;
     this.active = true;
+    // the same E press that opened the register must not close it again this frame
+    this.ignoreExitUntil = performance.now() + 350;
     g.player.enterFixedView(new THREE.Vector3(SHOP.counter.x - 1.45, FY + 1.63, 4.1), new THREE.Vector3(SHOP.counter.x - 0.2, TOP - 0.2, 4.08));
     g.input.cursorMode = true;
     g.input.exitLock();
@@ -198,6 +200,38 @@ export class Register {
     g.input.cursorMode = false;
     g.ui.registerMode(false);
     g.input.requestLock(); g.lockHint && g.lockHint();
+  }
+
+  // ------------------------------------------------------------ actions (menu buttons)
+  scanIndex(i) {
+    const it = this.items[i];
+    if (!it || it.scanned || this.state !== 'scanning') return;
+    this.click(it.clickable || it.mesh);
+  }
+  scanNext() { const i = this.items.findIndex((x) => !x.scanned); if (i >= 0) this.scanIndex(i); }
+  addChange(v) { this.click({ userData: { reg: { type: 'denom', value: v } }, getWorldPosition: (o) => o.copy(this.drawer.position) }); }
+  undoChange() { this.click({ userData: { reg: { type: 'clear' } } }); }
+  clearChange() { if (this.state === 'cash') { this.given = 0; this.givenStack = []; this.game.audio.play('key'); this.drawScreen(); this.updateHelp(); } else if (this.state === 'card') { this.keyed = ''; this.drawScreen(); this.updateHelp(); } }
+  key(k) { this.click({ userData: { reg: { type: 'key', key: k } } }); }
+
+  bindPanel() {
+    const body = document.getElementById('reg-body');
+    const close = document.getElementById('reg-close');
+    if (!body || this._panelBound) return;
+    this._panelBound = true;
+    close.addEventListener('click', () => { if (this.active) this.exit(); });
+    body.addEventListener('click', (e) => {
+      const b = e.target.closest('button'); if (!b || !this.active) return;
+      const a = b.dataset.act;
+      if (a === 'scan') this.scanIndex(parseInt(b.dataset.i, 10));
+      else if (a === 'scanNext') this.scanNext();
+      else if (a === 'cash') this.addChange(parseFloat(b.dataset.v));
+      else if (a === 'undo') this.undoChange();
+      else if (a === 'clear') this.clearChange();
+      else if (a === 'give') this.confirmCash();
+      else if (a === 'key') this.key(b.dataset.k);
+      else if (a === 'ok') this.confirmCard();
+    });
   }
 
   // ------------------------------------------------------------ click handling
@@ -360,27 +394,18 @@ export class Register {
     // drawer slide
     this.drawerOpen = THREE.MathUtils.lerp(this.drawerOpen, this.drawerTarget || 0, 1 - Math.exp(-10 * dt));
     this.drawer.position.x = this.drawerClosedX - this.drawerOpen * 0.24;
-    // hover highlight in register mode
     if (this.active) {
-      const hit = g.player.pointerPick(this.targets);
-      const obj = hit ? hit.object : null;
-      if (obj !== this.hover) {
-        if (this.hover && this.hover.material && this.hover.material.emissive) this.hover.material.emissive.setHex(this.hover.userData.prevEm || 0);
-        this.hover = obj;
-        if (obj && obj.material && obj.material.emissive && obj.userData.reg && obj.userData.reg.type !== 'monitor') { obj.userData.prevEm = obj.material.emissive.getHex(); obj.material.emissive.setHex(0x553300); }
-      }
-      document.body.style.cursor = obj && obj.userData.reg && obj.userData.reg.type !== 'monitor' ? 'pointer' : 'default';
-      if (g.input.mousePressed(0) && obj) this.click(obj);
-      if (g.input.pressed('KeyE') || g.input.pressed('Escape')) this.exit();
-      // keyboard shortcuts for card amounts
+      document.body.style.cursor = 'default';
+      if (performance.now() > (this.ignoreExitUntil || 0) && (g.input.pressed('KeyE') || g.input.pressed('Escape'))) { this.exit(); return; }
+      // keyboard shortcuts
       if (this.state === 'card') {
-        for (let d = 0; d <= 9; d++) if (g.input.pressed('Digit' + d) || g.input.pressed('Numpad' + d)) this.click({ userData: { reg: { type: 'key', key: String(d) } } });
-        if (g.input.pressed('Period') || g.input.pressed('NumpadDecimal')) this.click({ userData: { reg: { type: 'key', key: '.' } } });
-        if (g.input.pressed('Backspace')) this.click({ userData: { reg: { type: 'clear' } } });
+        for (let d = 0; d <= 9; d++) if (g.input.pressed('Digit' + d) || g.input.pressed('Numpad' + d)) this.key(String(d));
+        if (g.input.pressed('Period') || g.input.pressed('NumpadDecimal')) this.key('.');
+        if (g.input.pressed('Backspace')) this.undoChange();
         if (g.input.pressed('Enter') || g.input.pressed('NumpadEnter')) this.confirmCard();
       }
-      if (this.state === 'cash' && (g.input.pressed('Enter') || g.input.pressed('Space'))) this.confirmCash();
-      if (this.state === 'scanning' && g.input.pressed('Space')) { const it = this.items.find((x) => !x.scanned); if (it) this.click(it.mesh); }
+      if (this.state === 'cash' && g.input.pressed('Enter')) this.confirmCash();
+      if (this.state === 'scanning' && (g.input.pressed('Space') || g.input.pressed('Enter'))) this.scanNext();
     }
     // hired cashier auto-serves when the player isn't at the register
     if (this.cashier && !this.active && this.current && this.state !== 'done') {
@@ -394,16 +419,49 @@ export class Register {
     }
   }
 
+  /** Renders the pop-up register menu. */
   updateHelp() {
-    const g = this.game;
     if (!this.active) return;
-    let html;
-    if (!this.current) html = this.queue.length ? 'Waiting for the next customer to step up…' : 'No customers at the counter. <b>E</b> to leave.';
-    else if (this.state === 'scanning') html = `Click the items on the counter to <b>SCAN</b> them (${this.items.filter((i) => i.scanned).length}/${this.items.length})  <span style="opacity:.6">[SPACE]</span>`;
-    else if (this.state === 'cash') html = `💵 Customer paid <b>${money(this.paid)}</b> — give <b>${money(this.changeDue)}</b> change. Given: <b style="color:${Math.abs(this.given - this.changeDue) < 0.005 ? '#5f5' : '#fff'}">${money(this.given)}</b> → click bills/coins, then <b>GIVE</b>`;
-    else if (this.state === 'card') html = `💳 Card payment — type <b>${money(this.total)}</b> on the keypad and press <b>OK</b>. Entered: <b>$${this.keyed || '0'}</b>`;
-    else html = 'Done! ✔';
-    g.ui.registerHelp(html);
+    this.bindPanel();
+    const body = document.getElementById('reg-body'), cust = document.getElementById('reg-cust');
+    if (!body) return;
+    const touch = this.game.input.isTouch;
+    const c = this.current;
+    cust.textContent = c ? `Customer: ${c.name}` : (this.queue.length ? `${this.queue.length} in line` : '');
+    let html = '';
+    const totalRow = `<div class="rg-total"><span>TOTAL</span><b>${money(this.total)}</b></div>`;
+    if (!c) {
+      html = `<div class="rg-wait"><div class="rg-big">⏳</div><div>${this.queue.length ? 'The next customer is walking up to the counter…' : 'No one is waiting to pay right now.'}</div><div class="rg-hint">Customers who shop or pay for fuel inside come here. Close the register with <b>E</b> and keep working meanwhile.</div></div>`;
+    } else if (this.state === 'scanning') {
+      const left = this.items.filter((i) => !i.scanned).length;
+      html = `<div class="rg-step">STEP 1 OF 2 · SCAN THE ITEMS</div>
+        <div class="rg-items">${this.items.map((it, i) => {
+          const l = it.line;
+          const name = l.kind === 'fuel' ? `⛽ Fuel ${FUELS[l.fuelType].name} · ${l.liters.toFixed(1)} L` : l.kind === 'extra' ? (l.id === 'coffee' ? '☕ ' : '🌭 ') + l.name : `${PRODUCTS[l.id].icon} ${PRODUCTS[l.id].name}`;
+          return `<button class="rg-item ${it.scanned ? 'done' : ''}" data-act="scan" data-i="${i}" ${it.scanned ? 'disabled' : ''}><span>${name}</span><span>${it.scanned ? '✔ ' + money(l.price) : 'SCAN'}</span></button>`;
+        }).join('')}</div>
+        ${totalRow}
+        <button class="rg-main" data-act="scanNext">📟 SCAN NEXT ITEM <small>(${left} left${touch ? '' : ' · Space'})</small></button>`;
+    } else if (this.state === 'cash') {
+      const ok = Math.abs(this.given - this.changeDue) < 0.005, over = this.given > this.changeDue + 0.005;
+      html = `<div class="rg-step">STEP 2 OF 2 · GIVE CHANGE</div>
+        <div class="rg-pay">💵 Paid in cash: <b>${money(this.paid)}</b> · Total: <b>${money(this.total)}</b></div>
+        <div class="rg-due"><span>CHANGE DUE</span><b>${money(this.changeDue)}</b></div>
+        <div class="rg-given ${ok ? 'ok' : over ? 'over' : ''}"><span>You are giving</span><b>${money(this.given)}</b></div>
+        <div class="rg-cash">${DENOMS.map((d) => `<button class="rg-bill ${d >= 1 ? 'bill' : 'coin'}" data-act="cash" data-v="${d}">${d >= 1 ? '$' + d : Math.round(d * 100) + '¢'}</button>`).join('')}</div>
+        <div class="rg-row"><button class="rg-sec" data-act="undo">↶ Undo</button><button class="rg-sec" data-act="clear">Clear</button><button class="rg-main ${ok ? 'ready' : ''}" data-act="give">✓ GIVE CHANGE</button></div>
+        <div class="rg-hint">Tip: start with the biggest bill that fits, then go smaller.</div>`;
+    } else if (this.state === 'card') {
+      const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫'];
+      html = `<div class="rg-step">STEP 2 OF 2 · CARD PAYMENT</div>
+        <div class="rg-pay">💳 Type the total on the card reader: <b>${money(this.total)}</b></div>
+        <div class="rg-display">$${this.keyed || '0'}</div>
+        <div class="rg-pad">${keys.map((k) => k === '⌫' ? '<button class="rg-key" data-act="undo">⌫</button>' : `<button class="rg-key" data-act="key" data-k="${k}">${k}</button>`).join('')}</div>
+        <div class="rg-row"><button class="rg-sec" data-act="clear">Clear</button><button class="rg-main ${Math.abs(parseFloat(this.keyed || '0') - this.total) < 0.005 ? 'ready' : ''}" data-act="ok">✓ CHARGE CARD</button></div>`;
+    } else {
+      html = `<div class="rg-wait"><div class="rg-big">✅</div><div>Paid! Thanks for shopping.</div></div>`;
+    }
+    body.innerHTML = html;
   }
 
   drawScreen() {
@@ -436,6 +494,7 @@ export class Register {
       ctx.fillStyle = '#8fb3d9'; ctx.fillText(this.queue.length ? 'NEXT CUSTOMER…' : 'READY', 14, h - 40);
     }
     this.screenTex.needsUpdate = true;
+    if (this.active) this.updateHelp();
   }
 
   serialize() { return {}; }

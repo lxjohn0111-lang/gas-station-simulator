@@ -142,7 +142,7 @@ export class Cleaning {
       if (s < 1 && this.mopTarget !== h) h.mesh.scale.setScalar(Math.min(1, s + dt * 0.4));
     }
     // ambient generation of hazards & litter while open
-    if (!g.clock.open) return;
+    if (!g.clock.open || g.tutorial.active) return;
     this.timer -= dt;
     if (this.timer <= 0) {
       this.timer = rand(35, 70) / (g.upgrades.has('janitor') ? 0.6 : 1);

@@ -99,7 +99,7 @@ export class FuelSystem {
       pump.faces.push(face);
       this.drawScreen(face);
       FUEL_ORDER.forEach((ft, i) => {
-        const hx = (i - 1) * 0.31 * -sz; // mirror so order reads left→right on each face
+        const hx = (i - 1) * 0.31 * sz; // seen from the lane, nozzles line up under their REG / DSL / PRM labels
         const holster = add(boxGeo(0.14, 0.2, 0.1, 0), M.darkMetal, hx, 0.22 + 0.98, sz * 0.31);
         void holster;
         const n = this.makeNozzle(ft);
@@ -179,7 +179,7 @@ export class FuelSystem {
   // ------------------------------------------------------------ services
   beginService(customer, slot, car) {
     const req = customer.fuelReq;
-    const s = { customer, slot, car, fuelType: req.type, target: req.liters, dollars: req.dollars, full: req.full, dispensed: 0, state: 'waiting', nozzle: null, wrongFuel: false, idle: 0, warned: 0, accuracy: 0 };
+    const s = { startT: this.game.time, customer, slot, car, fuelType: req.type, target: req.liters, dollars: req.dollars, full: req.full, dispensed: 0, state: 'waiting', nozzle: null, wrongFuel: false, idle: 0, warned: 0, accuracy: 0 };
     // pump face that serves this slot's lane
     const pump = this.pumps[slot.island];
     s.face = pump.faces.find((f) => f.name === slot.lane);
@@ -238,7 +238,7 @@ export class FuelSystem {
       }
       if (n.state === 'inCar') {
         const s = n.service;
-        return { key: 'LMB', text: this.autoStop ? 'Click: Auto-fill' : 'Hold: Pump fuel', sub: `E: Remove nozzle • ${s ? this.requestText(s) : ''}` };
+        return { key: 'LMB', text: this.autoStop ? 'Click: Auto-fill' : 'Hold: Pump fuel', sub: `Look anywhere • stops by itself • E: take nozzle out` };
       }
       return null;
     }
@@ -248,7 +248,7 @@ export class FuelSystem {
       if (player.held && player.held.kind === 'nozzle') {
         const n = player.held.nozzle;
         const wrong = n.fuelType !== s.fuelType;
-        return { key: 'LMB', text: 'Insert nozzle', sub: `Wants ${this.requestText(s)}${wrong ? '  ⚠ check the fuel type!' : ''}`, color: FUELS[s.fuelType].color };
+        return { key: 'LMB', text: 'Put the nozzle in the car', sub: `Wants ${this.requestText(s)}${wrong ? '  ⚠ WRONG FUEL in your hand!' : ''}`, color: FUELS[s.fuelType].color };
       }
       if (s.nozzle) return null;
       return { text: `Wants ${this.requestText(s)}`, sub: 'Grab the matching nozzle from the pump', color: FUELS[s.fuelType].color };
@@ -308,7 +308,10 @@ export class FuelSystem {
     s.face.fuelType = n.fuelType; s.face.liters = s.dispensed; s.face.cost = s.dispensed * this.prices[n.fuelType]; this.drawScreen(s.face);
     g.audio.play('pumpClick', { pos: n.group.position });
     g.tutorial.event('nozzleIn', s);
-    if (n.fuelType !== s.fuelType) s.customer.say('question');
+    if (n.fuelType !== s.fuelType) {
+      s.customer.say('question', `That's ${FUELS[n.fuelType].name}?! I need ${FUELS[s.fuelType].name}!`);
+      g.ui.toast(`⚠ Wrong fuel! This car needs <b style="color:${FUELS[s.fuelType].color}">${FUELS[s.fuelType].name.toUpperCase()}</b>. Press E to take the nozzle out.`, 'bad', 4);
+    }
   }
 
   placeInCar(n) {
@@ -347,6 +350,43 @@ export class FuelSystem {
   }
 
   startPump(n) { this.pumpRequest = n; }
+
+  /** Target reached: click off, hang the nozzle back up and finish the sale. */
+  autoComplete(n) {
+    const g = this.game, s = n.service;
+    this.pumpRequest = null; n.autoRun = false; n.flowT = 0;
+    if (!s) return;
+    s.face.liters = s.dispensed; s.face.cost = s.dispensed * this.prices[n.fuelType]; this.drawScreen(s.face);
+    g.audio.play('pumpClick', { pos: n.group.position, pitch: 1.4 });
+    const door = s.car.m.fuelCap.door; door.rotation.y = s.car.m.fuelCap.side < 0 ? Math.PI : 0;
+    s.nozzle = null;
+    this.finishService(s);
+    this.returnNozzle(n);
+    g.audio.play('whoosh', { pos: n.home, vol: 0.4 });
+    if (n.fuelType === s.fuelType) g.ui.toast('⛽ Tank filled! The nozzle hung itself back up.', 'good', 2);
+  }
+
+  /** Waiting car whose fuel cap is closest to pos (for inserting the held nozzle). */
+  nearestWaitingService(pos, maxD = 3.8) {
+    let best = null, bd = maxD;
+    for (const s of this.services) {
+      if (s.nozzle || s.state === 'done' || !s.capHit) continue;
+      const d = s.capHit.getWorldPosition(new THREE.Vector3()).setY(pos.y).distanceTo(pos);
+      if (d < bd) { bd = d; best = s; }
+    }
+    return best;
+  }
+
+  /** Nozzle sitting in a car near the player that still needs fuel. */
+  nearbyFuelingNozzle(pos, maxD = 6) {
+    let best = null, bd = maxD;
+    for (const s of this.services) {
+      if (!s.nozzle || s.nozzle.state !== 'inCar' || s.state === 'done') continue;
+      const d = s.nozzle.group.position.distanceTo(pos);
+      if (d < bd) { bd = d; best = s.nozzle; }
+    }
+    return best;
+  }
 
   finishService(s) {
     if (s.state === 'done') return;
@@ -391,6 +431,9 @@ export class FuelSystem {
     } else {
       happy = false; rep = -0.02; xp = 5; line = pick(['That\'s it? I wanted more.', 'Half empty, really?']);
     }
+    // quick service is rewarded (car arrival -> fill complete)
+    const secs = s.startT != null ? this.game.time - s.startT : 60;
+    if (secs < 25) { tip *= 1.6; tip += 1; xp += 6; } else if (secs < 45) tip *= 1.2;
     if (s.customer && s.customer.traits.generous) tip *= 1.6;
     if (s.customer && s.customer.mood < 0.35) { tip *= 0.3; }
     tip = Math.round(tip * 100) / 100;
@@ -400,40 +443,42 @@ export class FuelSystem {
   // ------------------------------------------------------------ per-frame
   update(dt, player) {
     const g = this.game;
-    // pumping
+    // pumping (hold anywhere near the car; slows down near the target and stops by itself)
     let active = null;
     if (this.pumpRequest) {
       const n = this.pumpRequest;
       const s = n.service;
-      const near = n.group.position.distanceTo(player.pos) < 3.6;
-      const holding = player.input.mouseDown(0) || this.autoStop;
-      if (s && n.state === 'inCar' && near && (holding || n.autoRun)) {
+      const near = n.group.position.distanceTo(player.pos) < 6;
+      const holding = player.input.mouseDown(0);
+      if (s && n.state === 'inCar' && s.state !== 'done' && (n.autoRun || (near && holding))) {
         if (this.autoStop && !n.autoRun) n.autoRun = true;
         active = n;
-      } else { this.pumpRequest = null; n.autoRun = false; n.flowT = 0; }
+      } else { this.pumpRequest = null; n.flowT = 0; }
     }
     if (active) {
       const n = active, s = n.service;
-      n.flowT = Math.min(1, (n.flowT || 0) + dt * 0.9);
-      let flow = this.flowBase * (0.35 + 0.65 * n.flowT);
+      n.flowT = Math.min(1, (n.flowT || 0) + dt * 1.2);
+      let flow = this.flowBase * (0.4 + 0.6 * n.flowT);
+      const remaining = s.target - s.dispensed;
+      if (remaining < 2.5) flow *= Math.max(0.22, remaining / 2.5); // ease in to the target
       const remainingTank = this.tanks[n.fuelType];
       const carSpace = s.car.m.tank - s.dispensed;
-      if (s.full || this.autoStop) {
-        const stopAt = s.full ? s.target : s.target;
-        if (s.dispensed + flow * dt >= stopAt) { flow = Math.max(0, (stopAt - s.dispensed) / dt); }
-      }
-      let amt = Math.min(flow * dt, remainingTank, Math.max(0, carSpace));
-      if (amt <= 0) {
-        if (remainingTank <= 0) g.ui.toast(`⛽ ${FUELS[n.fuelType].name} tank is EMPTY! Order fuel on the tablet (TAB)`, 'bad');
-        else if ((s.full || this.autoStop) && s.dispensed >= s.target - 0.01) { g.audio.play('pumpClick', { pos: n.group.position, pitch: 1.4 }); g.ui.toast('*click* Auto shut-off', 'good', 1.5); }
-        this.pumpRequest = null; n.autoRun = false;
-      } else {
+      let amt = Math.min(flow * dt, Math.max(0, remaining), remainingTank, Math.max(0, carSpace));
+      if (amt > 0) {
         s.dispensed += amt; this.tanks[n.fuelType] -= amt;
         s.nozzleTypeUsed = n.fuelType;
         s.idle = 0;
         if (n.fuelType !== s.fuelType && s.dispensed > 1 && !s.wrongWarned) { s.wrongWarned = true; s.customer.say('question', 'Uhh... is that the right fuel?'); }
         g.economy.stats.litres += amt;
         if (Math.random() < dt * 6) g.particles.fuelDrip(n.group.position.clone().add(new THREE.Vector3(0, -0.05, 0)), { color: FUELS[n.fuelType].hex });
+      }
+      if (s.dispensed >= s.target - 0.005 || carSpace <= 0.005) {
+        s.dispensed = Math.min(s.dispensed, s.target);
+        this.autoComplete(n);
+      } else if (remainingTank <= 0) {
+        g.ui.toast(`⛽ ${FUELS[n.fuelType].name} tank is EMPTY! Order fuel on the tablet (TAB)`, 'bad');
+        this.pumpRequest = null; n.autoRun = false;
+        if (s.dispensed > 0.2) this.autoComplete(n);
       }
       this.pumping = n;
       this.screenTimer -= dt;

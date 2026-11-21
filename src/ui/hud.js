@@ -12,9 +12,9 @@ export class HUD {
     this.el = {
       hud: $('hud'), money: $('hud-money'), day: $('hud-day'), time: $('hud-time'), weather: $('hud-weather'),
       level: $('hud-level'), xp: $('hud-xp'), stars: $('hud-stars'), hype: $('hud-hype'),
-      prompt: $('prompt'), cross: $('crosshair'), toasts: $('toasts'), big: $('big-msg'), objectives: $('objectives'),
+      prompt: $('prompt'), cross: $('crosshair'), toasts: $('toasts'), big: $('big-msg'),
       hold: $('hold-info'), gauge: $('fuel-gauge'), fgType: $('fg-type'), fgTarget: $('fg-target'), fgFill: $('fg-fill'), fgMark: $('fg-mark'), fgLiters: $('fg-liters'), fgCost: $('fg-cost'),
-      funny: $('funny-cam'), tanks: $('tank-levels'), reg: $('register-ui'), regHelp: $('reg-help'),
+      funny: $('funny-cam'), tanks: $('tank-levels'), reg: $('register-ui'),
     };
     this.tabletOpen = false;
     this.lastPrompt = '';
@@ -69,7 +69,7 @@ export class HUD {
     const el = this.el.hold;
     if (!h) { el.classList.add('hidden'); return; }
     el.classList.remove('hidden');
-    if (h.kind === 'nozzle') el.innerHTML = `Holding <b style="color:${FUELS[h.nozzle.fuelType].color}">${FUELS[h.nozzle.fuelType].name}</b> nozzle<br><span style="opacity:.7">LMB at fuel cap • Q to hang up</span>`;
+    if (h.kind === 'nozzle') el.innerHTML = `Holding <b style="color:${FUELS[h.nozzle.fuelType].color}">${FUELS[h.nozzle.fuelType].name}</b> nozzle<br><span style="opacity:.7">${this.game.input.isTouch ? 'USE' : 'LMB'} next to the car • ${this.game.input.isTouch ? '⤴' : 'Q'} to hang up</span>`;
     else if (h.kind === 'prop') {
       const d = h.prop.data;
       el.innerHTML = d.kind === 'box' ? `📦 <b>${d.name}</b> — ${d.count} left<br><span style="opacity:.7">LMB on a shelf slot • RMB throw • Q drop</span>` : `Holding <b>${d.name}</b><br><span style="opacity:.7">RMB throw • Q drop</span>`;
@@ -101,10 +101,6 @@ export class HUD {
     this.game.renderer.final.material.uniforms.flash.value = 0.35;
   }
 
-  setObjectives(list) {
-    this.el.objectives.innerHTML = list.map((o) => `<div class="obj"><div class="obj-title">${o.title}</div>${o.text}</div>`).join('');
-  }
-
   float(text, pos, cls = '') { this.game.labels.float(text, pos, cls); }
 
   registerMode(on) {
@@ -114,7 +110,6 @@ export class HUD {
     if (on) this.setPrompt(null);
     document.body.style.cursor = on ? 'default' : 'none';
   }
-  registerHelp(html) { this.el.regHelp.innerHTML = html; }
 
   updateGauge(info) {
     const el = this.el.gauge;

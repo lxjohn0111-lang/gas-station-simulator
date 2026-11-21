@@ -26,7 +26,8 @@ import { Cleaning } from './cleaning.js';
 import { Economy } from './economy.js';
 import { Upgrades } from './upgrades.js';
 import { Funny } from './funny.js';
-import { Tutorial } from './tutorial.js';
+import { Guide } from './guide.js';
+import { Goals } from './goals.js';
 import { PRODUCTS, FUELS } from './products.js';
 import { HUD } from '../ui/hud.js';
 import { Labels } from '../ui/labels.js';
@@ -130,7 +131,8 @@ export class Game {
     this.cleaning = new Cleaning(this);
     this.customers = new CustomerManager(this);
     this.funny = new Funny(this);
-    this.tutorial = new Tutorial(this);
+    this.goals = new Goals(this);
+    this.tutorial = new Guide(this);
     this.animals = new Animals(this, this.chars);
     this.tablet = new Tablet(this);
     this.fuel.build();
@@ -164,7 +166,7 @@ export class Game {
     return {
       economy: this.economy.serialize(), fuel: this.fuel.serialize(), inventory: this.inventory.serialize(),
       upgrades: this.upgrades.serialize(), deliveries: this.deliveries.serialize(),
-      tutorialDone: !this.tutorial.active, clock: { day: this.clock.day },
+      tutorialDone: !this.tutorial.active, tutorialVersion: 2, goals: this.goals.serialize(), clock: { day: this.clock.day },
     };
   }
   applySave(s) {
@@ -174,7 +176,8 @@ export class Game {
     this.upgrades.load(s.upgrades);
     if (!this.inventory.load(s.inventory)) this.inventory.initialStock();
     this.deliveries.load(s.deliveries);
-    this.tutorialDone = !!s.tutorialDone;
+    this.tutorialDone = !!s.tutorialDone && s.tutorialVersion === 2;
+    this.goals.load(s.goals);
   }
   save() {
     if (this.state === 'loading') return;
@@ -204,7 +207,7 @@ export class Game {
     this.input.onLockError = () => { if (this.state === 'play' && !this.input.cursorMode) ctp.classList.remove('hidden'); };
     this.input.onLockChange = (locked, failed = false) => {
       if (locked || failed) { ctp.classList.add('hidden'); if (this.state === 'play') this.sdk.gameplayStart(); }
-      else if (!this.input.cursorMode && this.state === 'play') this.pause();
+      else if (!this.input.cursorMode && this.state === 'play' && !this.register.active && !this.tablet.isOpen && !this.ui.modalOpen) this.pause();
     };
     document.addEventListener('keydown', (e) => {
       if (e.code === 'Escape' && this.state === 'paused' && this.input.isTouch) this.resume();
@@ -229,6 +232,8 @@ export class Game {
     mus.addEventListener('input', () => { this.settings.music = parseFloat(mus.value); this.audio.setMusicVolume(this.settings.music); store(); });
     fov.addEventListener('input', () => { this.settings.fov = parseFloat(fov.value); this.player.fov = this.settings.fov; store(); });
     inv.addEventListener('change', () => { this.settings.invertY = inv.checked; this.input.invertY = inv.checked; store(); });
+    $('btn-skip-tut').addEventListener('click', () => { this.tutorial.skip(); this.syncPauseButtons(); });
+    $('btn-replay-tut').addEventListener('click', () => this.replayTutorial());
     $('sum-next').addEventListener('click', () => this.nextDay());
     $('sum-double').addEventListener('click', () => this.doubleTips());
     window.addEventListener('resize', () => this.renderer.resize());
@@ -249,7 +254,7 @@ export class Game {
     document.body.style.cursor = 'none';
     this.tutorial.start(this.tutorialDone);
     // guarantee an early first customer at the pumps
-    setTimeout(() => { if (this.customers.list.length === 0) this.customers.trySpawn('fuel'); }, this.hadSave ? 6000 : 1500);
+    setTimeout(() => { if (!this.tutorial.active && this.customers.list.length === 0) this.customers.trySpawn('fuel'); }, this.hadSave ? 6000 : 1500);
     this.ui.bigMessage(`DAY ${this.clock.day}`, this.hadSave ? 'Welcome back, boss.' : 'Last Chance Gas is OPEN');
     this.ui.updateClock(this.clock.day, this.clock.hour, this.sky.weatherName);
     this.loop();
@@ -259,11 +264,27 @@ export class Game {
     if (this.state !== 'play') return;
     if (this.tablet.isOpen || this.register.active) return;
     this.state = 'paused';
+    this.syncPauseButtons();
     document.getElementById('pause').classList.remove('hidden');
     document.body.style.cursor = 'default';
     this.sdk.gameplayStop();
     this.save();
   }
+  syncPauseButtons() {
+    document.getElementById('btn-skip-tut').classList.toggle('hidden', !this.tutorial.active);
+    document.getElementById('btn-replay-tut').classList.toggle('hidden', this.tutorial.active);
+  }
+
+  replayTutorial() {
+    if (this.register.active) this.register.exit();
+    if (this.player.held) this.player.drop(false, 0);
+    this.customers.clearAll();
+    this.clock.hour = Math.min(this.clock.hour, 18);
+    this.resume();
+    if (!this.input.isTouch) this.input.requestLock();
+    this.tutorial.start(false);
+  }
+
   resume() {
     if (this.state !== 'paused') return;
     this.state = 'play';
@@ -275,7 +296,7 @@ export class Game {
   // ------------------------------------------------------------------ day cycle
   updateClock(dt) {
     const c = this.clock;
-    c.hour += dt / SECONDS_PER_HOUR;
+    if (!this.tutorial.active) c.hour += dt / SECONDS_PER_HOUR;
     if (c.open && c.hour >= CLOSE_HOUR) {
       c.open = false;
       this.ui.toast('🔒 Closing time! Finish serving the last customers.', 'good', 4);
@@ -409,6 +430,7 @@ export class Game {
       try { this.upgrades.update(dt); } catch (e) { this._err(e, 'upgrades'); }
       try { this.animals.update(dt); } catch (e) { this._err(e, 'animals'); }
       try { this.tutorial.update(dt); } catch (e) { this._err(e, 'tutorial'); }
+      try { this.goals.update(dt); } catch (e) { this._err(e, 'goals'); }
       try { this.economy.update(dt); } catch (e) { this._err(e, 'economy'); }
       try { this.particles.update(dt); } catch (e) { this._err(e, 'particles'); }
       // dusty weather spawns extra tumbleweeds
